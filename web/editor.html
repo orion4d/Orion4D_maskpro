@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>MaskPro Editor</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    :root{
+      --bg:#0f1216;--panel:#14171b;--line:#232832;--muted:#9aa3ad;--txt:#eaf0f6;--blue:#2ea8ff;--btn:#1a1f26;
+    }
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial}
+    .row{display:flex;align-items:center;gap:.5rem}
+    .btn{background:var(--btn);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:.35rem .6rem;cursor:pointer}
+    .btn:active{transform:translateY(1px)}
+    .lab{opacity:.8}
+    .val{opacity:.7}
+    input[type="range"]{accent-color:var(--blue)}
+    .chk{display:inline-flex;align-items:center;gap:.35rem}
+    .muted{color:var(--muted)}
+    header#topbar{display:flex;gap:.75rem;align-items:center;padding:.55rem .75rem;border-bottom:1px solid var(--line);background:#15171b;position:sticky;top:0;z-index:20}
+    #status{margin-left:auto;opacity:.8}
+
+    main#app{display:grid;grid-template-columns:64px 1fr 8px 360px;grid-template-rows:1fr;height:calc(100vh - 50px)}
+    /* left palette */
+    #toolPalette{display:flex;flex-direction:column;gap:6px;background:#101317;border-right:1px solid var(--line);padding:6px}
+    #toolPalette .tool{width:48px;height:48px;border-radius:10px;display:grid;place-items:center;background:#12151a;border:1px solid #1f2329;cursor:pointer}
+    #toolPalette .tool.active{outline:2px solid var(--blue)}
+    #toolPalette svg{width:22px;height:22px;fill:#c9d2dc}
+    #eraseToggle.on{outline:2px solid #ff7373}
+
+    /* center/canvas */
+    #center{position:relative;overflow:auto;background:#0b0d11}
+    #stageOuter{
+      position:relative;width:100%;min-height:100%;
+      display:flex;justify-content:center;align-items:flex-start;
+      transform-origin:top center;
+    }
+    #stage{position:relative;display:inline-block;margin:24px}
+    #stage canvas{display:block}
+    #overlay{position:absolute;left:0;top:0;pointer-events:auto}
+    .panning{cursor:grabbing!important}
+
+    /* resizer */
+    #resizer{cursor:col-resize;background:#0d1014}
+
+    /* right options */
+    #toolSettings{background:var(--panel);border-left:1px solid var(--line);padding:.75rem;overflow:auto}
+    #toolSettings h3{margin:.75rem 0 .4rem}
+    #toolSettings .row{margin:.25rem 0}
+    .toolcfg{display:none}
+    details.group{border:1px solid var(--line);border-radius:10px;margin:.5rem 0;background:#12161c}
+    details.group>summary{cursor:pointer;list-style:none;padding:.5rem .75rem;font-weight:600}
+    details.group>div{padding:.5rem .75rem .75rem}
+
+    /* brush grid modal */
+    #brushGridModal{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;z-index:50}
+  </style>
+</head>
+<body>
+  <!-- TOP BAR (général) -->
+  <header id="topbar">
+    <div class="row">
+      <span class="lab">Zoom</span>
+      <input id="zoom" type="range" min="10" max="1000" value="100"/>
+      <span id="zoomVal" class="val">100%</span>
+    </div>
+    <label class="chk"><input id="maskOnly" type="checkbox"/> Mask only (M)</label>
+
+    <button id="clear" class="btn">Clear</button>
+    <button id="invert" class="btn">Invert</button>
+    <button id="export" class="btn">Export</button>
+    <button id="saveClose" class="btn">Save &amp; Close</button>
+    <div id="status" class="muted"></div>
+  </header>
+
+  <main id="app">
+    <!-- PALETTE GAUCHE -->
+    <aside id="toolPalette">
+      <div id="toolboxBtn" class="tool" title="Toggle Global tools (T)">
+        <svg viewBox="0 0 24 24"><path d="M7 7h10l2 3H5l2-3zm-2 5h14v7H5v-7z"/></svg>
+      </div>
+      <div id="eraseToggle" class="tool" title="Toggle erase (X)">
+        <svg viewBox="0 0 24 24"><path d="M3 16l6-6 6 6-6 6-6-6zm12-8l4-4 2 2-4 4-2-2z"/></svg>
+      </div>
+      <div id="handTool" class="tool" data-tool="hand" title="Hand (hold Space or click)">
+        <svg viewBox="0 0 24 24"><path d="M7 11V6a1 1 0 0 1 2 0v5h1V4a1 1 0 0 1 2 0v7h1V5a1 1 0 1 1 2 0v8h1V8a1 1 0 1 1 2 0v7a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6v-4h3z"/></svg>
+      </div>
+      <div class="tool active" data-tool="brush" title="Brush (B)">
+        <svg viewBox="0 0 24 24"><path d="M7 16c-1.657 0-3 1.343-3 3 0 .552.448 1 1 1h6c0-2.209-1.791-4-4-4zm12.707-12.707a1 1 0 0 0-1.414 0l-8.5 8.5 2.414 2.414 8.5-8.5a1 1 0 0 0 0-1.414z"/></svg>
+      </div>
+      <div class="tool" data-tool="lasso" title="Lasso (L)">
+        <svg viewBox="0 0 24 24"><path d="M12 3C6.477 3 2 5.239 2 8s4.477 5 10 5 10-2.239 10-5-4.477-5-10-5zm-8 9c0 2.761 3.582 5 8 5s8-2.239 8-5"/></svg>
+      </div>
+      <div class="tool" data-tool="poly" title="Polygonal lasso (K)">
+        <svg viewBox="0 0 24 24"><path d="M3 3h6l3 6-6 12H3V3zm12 0h6v6l-9 9-3-3 6-12z"/></svg>
+      </div>
+      <div class="tool" data-tool="ellipse" title="Ellipse (E)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg>
+      </div>
+      <div class="tool" data-tool="rect" title="Rectangle (S)">
+        <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+      </div>
+      <div class="tool" data-tool="grad" title="Gradient (G)">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 4l16 16"/></svg>
+      </div>
+      <div class="tool" data-tool="wand" title="Magic wand (W)">
+        <svg viewBox="0 0 24 24"><path d="M3 21 14 10l2 2L5 23H3v-2zm9-9 7-7 2 2-7 7-2-2zM2 8l2-2 3 3-2 2L2 8z"/></svg>
+      </div>
+    </aside>
+
+    <!-- CANVAS -->
+    <section class="center" id="center">
+      <div id="stageOuter">
+        <div id="stage">
+          <canvas id="img"></canvas>
+          <canvas id="overlay"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESIZER -->
+    <div id="resizer"></div>
+
+    <!-- OPTIONS DROITE -->
+    <aside id="toolSettings">
+      <!-- GLOBAL TOOLS (toggle par toolboxBtn / T) -->
+      <details id="globalTools" class="group" open>
+        <summary>GLOBAL TOOLS</summary>
+        <div>
+          <div class="row"><span class="lab">Blur contour</span>
+            <input id="blurSigma" type="range" min="0" max="32" step="0.5" value="3"/>
+            <span id="blurSigmaVal" class="val">3.0</span>
+            <button id="applyBlur" class="btn">Apply</button>
+          </div>
+          <div class="row"><span class="lab">Dilate radius</span>
+            <input id="dilateRadius" type="range" min="1" max="64" value="8"/>
+            <span id="dilateVal" class="val">8</span>
+            <button id="applyDilate" class="btn">Apply</button>
+          </div>
+          <div class="row"><span class="lab">Contract radius</span>
+            <input id="erodeRadius" type="range" min="1" max="64" value="8"/>
+            <span id="erodeVal" class="val">8</span>
+            <button id="applyErode" class="btn">Apply</button>
+          </div>
+          <div class="row">
+            <button id="aiCutout" class="btn">AI Cutout (rembg)</button>
+          </div>
+        </div>
+      </details>
+
+      <!-- BRUSH -->
+      <h3>BRUSH</h3>
+      <div class="toolcfg" data-toolcfg="brush" style="display:block">
+        <div class="row"><span class="lab">Size</span><input id="brush" type="range" min="1" max="2048" value="60"/></div>
+        <div class="row"><span class="lab">Hardness</span><input id="hard" type="range" min="0" max="100" value="80"/></div>
+        <div class="row"><span class="lab">Opacity</span><input id="opacity" type="range" min="1" max="100" value="100"/></div>
+        <div class="row"><span class="lab">Smoothing</span><input id="smooth" type="range" min="0" max="100" value="20"/><span id="smoothVal" class="val">20%</span></div>
+        <div class="row"><span class="lab">Shape</span>
+          <label class="chk"><input type="radio" name="bshape" id="brushShapeRound" checked/> Round</label>
+          <label class="chk"><input type="radio" name="bshape" id="brushShapeSquare"/> Square</label>
+          <label class="chk"><input type="radio" name="bshape" id="brushShapeCustom"/> Custom</label>
+        </div>
+        <div class="row" id="customBrushRow" style="display:none">
+          <span class="lab">In /web/brushes :</span>
+          <select id="customBrushList"></select>
+          <button id="reloadBrushes" class="btn">Reload</button>
+        </div>
+        <div class="row" id="customBrushRow2" style="display:none">
+          <span class="lab">or file name:</span>
+          <input id="customBrushName" type="text" placeholder="mybrush.png" style="flex:1;min-width:160px;background:#0f1216;border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:.3rem .5rem"/>
+          <button id="loadBrush" class="btn">Load</button>
+        </div>
+        <div class="row" id="customBrushRow3" style="display:none">
+          <span class="lab">Rotation</span>
+          <input id="customRot" type="range" min="0" max="360" value="0"/>
+          <span id="customRotVal" class="val">0°</span>
+        </div>
+        <div class="row" id="customBrushRowPicker" style="display:none">
+          <button id="openBrushGrid" class="btn">Open brush grid</button>
+        </div>
+      </div>
+
+      <!-- LASSO -->
+      <div class="toolcfg" data-toolcfg="lasso">
+        <h3>LASSO</h3>
+        <div class="row"><span class="lab">Blur contour</span><input id="lassoFeather" type="range" min="0" max="32" step="0.5" value="0"/><span id="lassoFeatherVal" class="val">0</span></div>
+        <div class="row"><span class="lab">Opacity</span><input id="selOpacity" type="range" min="1" max="100" value="100"/><span id="selOpacityVal" class="val">100%</span></div>
+      </div>
+
+      <!-- POLY LASSO -->
+      <div class="toolcfg" data-toolcfg="poly">
+        <h3>POLYGONAL LASSO</h3>
+        <div class="row"><span class="lab">Blur contour</span><input id="polyFeather" type="range" min="0" max="32" step="0.5" value="0"/><span id="polyFeatherVal" class="val">0</span></div>
+        <div class="row"><span class="lab">Opacity</span><input id="polyOpacity" type="range" min="1" max="100" value="100"/><span id="polyOpacityVal" class="val">100%</span></div>
+        <div class="muted">Left-click = point • Right-click or quick Alt = close & apply</div>
+      </div>
+
+      <!-- ELLIPSE -->
+      <div class="toolcfg" data-toolcfg="ellipse">
+        <h3>ELLIPSE / CIRCLE</h3>
+        <div class="row"><span class="lab">Blur contour</span><input id="ellFeather" type="range" min="0" max="32" step="0.5" value="0"/><span id="ellFeatherVal" class="val">0</span></div>
+        <div class="row"><span class="lab">Opacity</span><input id="ellOpacity" type="range" min="1" max="100" value="100"/><span id="ellOpacityVal" class="val">100%</span></div>
+        <label class="chk"><input id="ellCenter" type="checkbox"/> Center origin (Alt)</label>
+        <div class="muted">Hold Ctrl for perfect circle</div>
+      </div>
+
+      <!-- RECT -->
+      <div class="toolcfg" data-toolcfg="rect">
+        <h3>RECTANGLE / SQUARE</h3>
+        <div class="row"><span class="lab">Blur contour</span><input id="rectFeather" type="range" min="0" max="32" step="0.5" value="0"/><span id="rectFeatherVal" class="val">0</span></div>
+        <div class="row"><span class="lab">Opacity</span><input id="rectOpacity" type="range" min="1" max="100" value="100"/><span id="rectOpacityVal" class="val">100%</span></div>
+        <label class="chk"><input id="rectCenter" type="checkbox"/> Center origin (Alt)</label>
+        <div class="row"><span class="lab">Corner radius</span><input id="rectRadius" type="range" min="0" max="64" value="0"/><span id="rectRadiusVal" class="val">0</span></div>
+        <div class="muted">Hold Ctrl for perfect square</div>
+      </div>
+
+      <!-- GRADIENT -->
+      <div class="toolcfg" data-toolcfg="grad">
+        <h3>GRADIENT</h3>
+        <label class="chk"><input id="gradRadial" type="checkbox"/> Radial (unchecked = Linear)</label>
+        <div class="row"><span class="lab">Opacity</span><input id="gradOpacity" type="range" min="1" max="100" value="100"/><span id="gradOpacityVal" class="val">100%</span></div>
+        <div class="muted">Fills from solid → transparent along the line.</div>
+      </div>
+
+      <!-- WAND -->
+      <div class="toolcfg" data-toolcfg="wand">
+        <h3>MAGIC WAND</h3>
+        <div class="row"><span class="lab">Mode</span>
+          <label class="chk"><input type="radio" name="wandMode" id="wandAdd" checked/> + Add</label>
+          <label class="chk"><input type="radio" name="wandMode" id="wandSub"/> – Subtract</label>
+        </div>
+        <div class="row"><span class="lab">Tolerance</span><input id="wandTol" type="range" min="0" max="255" value="32"/><span id="wandTolVal" class="val">32</span></div>
+        <div class="row"><span class="lab">Smoothing</span><input id="wandSmooth" type="range" min="0" max="40" value="6"/><span id="wandSmoothVal" class="val">6</span></div>
+        <div class="row"><span class="lab">Average</span><input id="wandAvg" type="range" min="3" max="101" step="2" value="3"/><span id="wandAvgVal" class="val">3×3</span></div>
+        <button id="wandFill" class="btn">Fill selection</button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- GRID MODAL -->
+  <div id="brushGridModal">
+    <div style="background:#14171b;border:1px solid #232832;border-radius:12px;max-width:80vw;max-height:80vh;display:flex;flex-direction:column;gap:.5rem;padding:.75rem">
+      <div style="display:flex;gap:.5rem;align-items:center">
+        <strong style="flex:1">Custom brushes</strong>
+        <button id="brushGridRefresh" class="btn">Refresh</button>
+        <button id="brushGridClose" class="btn">Close</button>
+      </div>
+      <div id="brushGrid" style="display:grid;grid-template-columns:repeat(auto-fill,120px);gap:.75rem;overflow:auto;padding:.25rem;min-width:480px;min-height:320px"></div>
+    </div>
+  </div>
+
+  <script src="editor.js"></script>
+</body>
+</html>
