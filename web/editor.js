@@ -108,7 +108,12 @@
     const z=Math.max(0.1,Math.min((vb.width-pad)/W,(vb.height-pad)/H));
     applyZoom(z); zoomEl.value=Math.round(z*100);
   }
-  function screenToImage(cx,cy){ const r=canOv.getBoundingClientRect(); return [(cx-r.left+center.scrollLeft)/zoom,(cy-r.top+center.scrollTop)/zoom]; }
+function screenToImage(cx,cy){
+    const r = canOv.getBoundingClientRect();
+    const x = (cx - r.left) / zoom;
+    const y = (cy - r.top) / zoom;
+    return [x, y];
+  }
 
   // resizable rightbar
   (function(){
@@ -419,7 +424,17 @@
   function toggleErase(){ERASE=!ERASE; setEraseUI();}
   eraseToggleBtn.addEventListener("click",toggleErase);
 
-  // ---------- pointer flow
+  
+  // toolbox toggle (right-side global tools panel)
+  (function(){
+    const panel = document.getElementById('globalTools');
+    function setToolboxUI(on){ toolboxBtn.classList.toggle('on', !!on); if(panel){ panel.open = !!on; } }
+    // init state from details 'open' attribute
+    setToolboxUI(panel?.open !== false);
+    toolboxBtn.addEventListener("click", ()=> setToolboxUI(!(panel?.open)));
+    window.addEventListener("keydown",(e)=>{ if(e.key.toLowerCase()==='t'){ setToolboxUI(!(panel?.open)); }});
+  })();
+// ---------- pointer flow
   function onMove(e){
     const [ix,iy]=screenToImage(e.clientX,e.clientY);
     if(tool==="ellipse"||tool==="rect"||tool==="grad"||tool==="poly"){cursorX=ix;cursorY=iy;} else {cursorX=clamp(ix,0,W-1);cursorY=clamp(iy,0,H-1);}
@@ -650,7 +665,7 @@
       const t=document.createElement("canvas"); t.width=W; t.height=H;
       const tc=t.getContext("2d",{willReadFrequently:true}); tc.drawImage(m,0,0,W,H);
       const d=tc.getImageData(0,0,W,H).data;
-      for(let i=3,j=0;i<d.length;i+=4,j++) alphaBuf[j]=d[i];
+      for(let i=0,j=0;i<d.length;i+=4,j++) alphaBuf[j]=d[i];
       refreshOverlay(); statusEl.textContent="AI cutout done.";
     }catch(err){ statusEl.textContent = String(err?.message||err); }
   });
@@ -698,7 +713,7 @@
         tc.drawImage(m,dx,dy);
         const d=tc.getImageData(0,0,W,H).data;
         let alphaSignal=false; for(let i=3;i<d.length;i+=4){ if(d[i]!==255){alphaSignal=true;break;} }
-        if(alphaSignal){for(let i=3,j=0;i<d.length;i+=4,j++) alphaBuf[j]=d[i];}
+        if(alphaSignal){ for(let i=0,j=0;i<d.length;i+=4,j++) alphaBuf[j]=d[i+3];}
         else { let whites=0,blacks=0; for(let i=0;i<d.length;i+=4){const g=(d[i]+d[i+1]+d[i+2])/3; if(g>200) whites++; else if(g<55) blacks++; }
                const inv=whites>blacks*2; for(let i=0,j=0;i<d.length;i+=4,j++){const g=(d[i]+d[i+1]+d[i+2])/3; alphaBuf[j]=inv?(255-g):g;} }
       }
