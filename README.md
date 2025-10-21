@@ -4,25 +4,6 @@
 
 ---
 
-## Sommaire
-- [Aperçu](#aperçu)
-- [Fonctionnalités](#fonctionnalités)
-- [Installation](#installation)
-- [Démarrage rapide](#démarrage-rapide)
-- [Entrées / Sorties du node](#entrées--sorties-du-node)
-- [Raccourcis clavier](#raccourcis-clavier)
-- [Interface de l’éditeur](#interface-de-léditeur)
-- [Pinceaux personnalisés](#pinceaux-personnalisés)
-- [API HTTP (routes)](#api-http-routes)
-- [Cache et fichiers](#cache-et-fichiers)
-- [Bonnes pratiques](#bonnes-pratiques)
-- [Dépannage](#dépannage)
-- [Changements à prévoir / Roadmap](#changements-à-prévoir--roadmap)
-- [Licence](#licence)
-- [Crédits](#crédits)
-
----
-
 ## Aperçu
 
 `Orion4D_maskpro` ajoute un **éditeur de masques** à ComfyUI :
@@ -49,25 +30,6 @@ Les raccourcis et l’UI sont définis dans `web/editor.html` et `web/editor.js`
 
 ## Installation
 
-1. Copier le dossier `Orion4D_maskpro` dans `ComfyUI/custom_nodes/` :
-   ```text
-   ComfyUI/custom_nodes/Orion4D_maskpro/
-   ├─ __init__.py
-   ├─ maskpro.py
-   └─ web/
-      ├─ editor.html
-      ├─ editor.js (ou editorbug.js selon votre version)
-      └─ brushes/            # (vos pinceaux PNG ici)
-   ```
-
-2. (Optionnel) **Rembg** pour l’AI cutout :
-   ```bash
-   pip install rembg
-   ```
-
-3. Redémarrer ComfyUI. Le node **MaskPro** apparaît dans la palette (section des custom nodes).
-
-> Les routes HTTP et le répertoire web sont montés automatiquement à l’import (`register_routes()`) fileciteturn0file1.
 
 ---
 
@@ -98,8 +60,6 @@ Le node gère la priorité suivante pour le masque : **`mask.png` édité > mas
 ---
 
 ## Raccourcis clavier
-
-> **Note importante (correction infobulle)** : dans `editor.html`, l’info-bulle de l’**outil main** affiche _“Hand Tool (H or hold M)”_. Or le code lie **H** pour maintenir l’outil main (pan) ; **M** sert à **afficher le masque seul** (*Mask Only*). Il faut donc corriger l’infobulle en “**H or hold H**” / ou “**Hand Tool (H)**”. Réf. : infobulles HTML fileciteturn1file8 et gestion des touches dans `editor.js` (keydown) fileciteturn1file10.
 
 **Navigation / global**
 - **Molette** : zoom au niveau du curseur (lissage centré).  
@@ -186,13 +146,12 @@ Le node **sert** ces fichiers statiquement via `/orion4d_maskpro/static/maskpro_
 
 - **Le bouton AI cutout échoue** → installer `rembg` (`pip install rembg`).  
 - **“image.png missing” dans l’éditeur** → lancez **Edit Mask** depuis le node (il envoie l’image en cache avant ouverture) fileciteturn1file12.  
-- **Infobulle “Hand Tool (H or hold M)”** → c’est un libellé à corriger côté `editor.html`. Le comportement correct est **H** (maintenir) pour *Hand* et **M** pour *Mask Only* (toggle) fileciteturn1file8 fileciteturn1file10.
 
 ---
 
 ## Licence
 
-Sauf mention contraire dans le dépôt, ce projet est publié sous licence **Creative Commons BY‑NC 4.0** (à adapter selon votre choix).
+Ce projet est publié sous licence **MIT**
 
 ---
 
