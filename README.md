@@ -9,7 +9,8 @@
 
 `Orion4D_maskpro` apporte un éditeur de masques complet à ComfyUI avec :
 
-<img width="2556" height="1310" alt="image" src="https://github.com/user-attachments/assets/d86744c1-d85a-4f27-b538-e188054eeeac" />
+<img width="1459" height="941" alt="image" src="https://github.com/user-attachments/assets/34e16944-da6d-4fb8-9178-02f57912b3fa" />
+
 
 - **Outils professionnels** : pinceau, lasso, polygone, rectangle, ellipse, dégradé, baguette magique
 - **Pinceaux jusqu'à 2048 px** avec support PNG transparent et rotation
