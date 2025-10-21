@@ -1,7 +1,7 @@
-# MaskPro
-**Éditeur de masques avancé pour ComfyUI**
+# Orion4D MaskPro
+***Éditeur de masques avancé pour ComfyUI, édition non destructive avec outils de sélection professionnels, pinceaux personnalisés PNG, aperçu embarqué et éditeur plein écran.****
 
-Édition non destructive avec outils de sélection professionnels, pinceaux personnalisés PNG, aperçu embarqué et éditeur plein écran.
+<img width="1541" height="903" alt="image" src="https://github.com/user-attachments/assets/620e654b-7823-4321-8df1-424bf40fbe24" />
 
 ---
 
