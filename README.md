@@ -51,11 +51,11 @@
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/votre-repo/Orion4D_maskpro.git
+git clone https://github.com/orion4d/Orion4D_maskpro.git
 # Redémarrer ComfyUI
 ```
 
-**Pour le détourage IA (optionnel) :**
+**Pour le détourage IA :**
 ```bash
 pip install rembg
 ```
