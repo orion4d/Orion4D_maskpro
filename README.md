@@ -13,7 +13,7 @@
 - Outils globaux : flou de contour, dilatation/érosion, seuillage (image/masque), **AI cutout via `rembg`**.
 - Intégration node : **prévisualisation** de l’image/masque dans le node, bouton **Edit Mask** ouvrant l’éditeur en fenêtre dédiée.
 
-**Références de code :** gestion des routes, cache et endpoints dans `maskpro.py` fileciteturn0file0 ; mappage du node et montage du répertoire web dans `__init__.py` fileciteturn0file1 ; squelette de README d’origine dans `README.md` (fourni) fileciteturn0file2.  
+**Références de code :** gestion des routes, cache et endpoints dans `maskpro.py`; mappage du node et montage du répertoire web dans `__init__.py` fileciteturn0file1 ; squelette de README d’origine dans `README.md` (fourni) fileciteturn0file2.  
 Les raccourcis et l’UI sont définis dans `web/editor.html` et `web/editor.js`/`web/editorbug.js` fileciteturn1file4 fileciteturn1file10.
 
 ---
@@ -22,7 +22,7 @@ Les raccourcis et l’UI sont définis dans `web/editor.html` et `web/editor.js`
 
 - **Éditeur web intégré** (ouvre `web/editor.html`) avec tous les outils de sélection/peinture courants.
 - **Aperçu dans le node** : modes *image / mask / rgba* + inversion du masque à l’aperçu (JS d’intégration) fileciteturn1file16.
-- **AI Cutout (rembg)** : génère un masque initial via détection de sujet (si `rembg` est installé) fileciteturn0file0.
+- **AI Cutout (rembg)** : génère un masque initial via détection de sujet (si `rembg` est installé)
 - **Export PNG opaque** (L 8‑bit) et **Save** vers le cache du node.
 - **Historique** (Undo/Redo), **zoom** au curseur, **pan** (outil main), **sélections animées** (fourmis marchantes).
 
@@ -105,19 +105,19 @@ Le node gère la priorité suivante pour le masque : **`mask.png` édité > mas
 
 - Placez vos PNG (avec alpha) dans `web/brushes/`.  
 - Le menu **Brush shape = Custom** permet d’en charger un, **rotation** comprise.  
-- Le bouton **Brush Grid** affiche la grille (chargée depuis `/orion4d_maskpro/list_brushes`) et permet de choisir rapidement fileciteturn0file0.
+- Le bouton **Brush Grid** affiche la grille (chargée depuis `/orion4d_maskpro/list_brushes`) et permet de choisir rapidement
 
 ---
 
 ## API HTTP (routes)
 
 Routes montées par `maskpro.py` (AioHTTP) :
-- `GET  /orion4d_maskpro/editor` → redirige vers `web/editor.html?node_id=...` fileciteturn0file0.  
-- `GET  /orion4d_maskpro/open?node_id=<id>` → métadonnées (présence `image.png`/`mask.png`, `w`,`h`) fileciteturn0file0.  
-- `POST /orion4d_maskpro/save` (multipart `node_id`, `image?`, `mask?`) → enregistre les PNG dans le **cache** fileciteturn0file0.  
-- `GET  /orion4d_maskpro/clear?node_id=<id>` → supprime `mask.png` du cache fileciteturn0file0.  
-- `GET  /orion4d_maskpro/list_brushes` → liste `web/brushes/*.png` fileciteturn0file0.  
-- `POST /orion4d_maskpro/rembg?node_id=<id>` → **AI cutout** (requiert `rembg`) fileciteturn0file0.
+- `GET  /orion4d_maskpro/editor` → redirige vers `web/editor.html?node_id=...`
+- `GET  /orion4d_maskpro/open?node_id=<id>` → métadonnées (présence `image.png`/`mask.png`, `w`,`h`)  
+- `POST /orion4d_maskpro/save` (multipart `node_id`, `image?`, `mask?`) → enregistre les PNG dans le **cache**   
+- `GET  /orion4d_maskpro/clear?node_id=<id>` → supprime `mask.png` du cache  
+- `GET  /orion4d_maskpro/list_brushes` → liste `web/brushes/*.png`
+- `POST /orion4d_maskpro/rembg?node_id=<id>` → **AI cutout** (requiert `rembg`)
 
 ---
 
@@ -129,7 +129,7 @@ ComfyUI/user/orion4d_cache/maskpro_<NODE_ID>/
 ├─ image.png   # image de référence (optionnelle, posée par le node avant l’édition)
 └─ mask.png    # masque (L 8-bit, opaque)
 ```
-Le node **sert** ces fichiers statiquement via `/orion4d_maskpro/static/maskpro_<id>/…` pour l’éditeur et la prévisualisation fileciteturn0file0.
+Le node **sert** ces fichiers statiquement via `/orion4d_maskpro/static/maskpro_<id>/…` pour l’éditeur et la prévisualisation
 
 ---
 
