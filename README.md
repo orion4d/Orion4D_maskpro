@@ -1,3 +1,4 @@
+# MaskPro
 **Éditeur de masques avancé pour ComfyUI**
 
 Édition non destructive avec outils de sélection professionnels, pinceaux personnalisés PNG, aperçu embarqué et éditeur plein écran.
