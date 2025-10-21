@@ -237,28 +237,6 @@ Les fichiers sont servis via `/orion4d_maskpro/static/maskpro_<id>/...` pour l'�
 
 ---
 
-## 📄 Licence
-
-Ce projet est publié sous licence **MIT**.
-
-Vous êtes libre de l'utiliser, le modifier et le distribuer selon les termes de cette licence.
-
----
-
-## 🙏 Crédits
-
-**Conception & Développement**  
-Orion4D / Philippe Joye
-
----
-
-**⭐ Si ce projet vous est utile, n'hésitez pas à lui donner une étoile sur GitHub !**
-
-</details>
-
-</details>
-
----
 <div align="center">
 
 <h3>🌟 <strong>Show Your Support</strong></h3>
