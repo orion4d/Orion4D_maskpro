@@ -130,6 +130,11 @@ pip install rembg
 | **C** | Effacer le masque (Clear) |
 | **I** | Inverser le masque (Invert) |
 
+- Déplacer une sélection : clic bouton droit maintenu, déplacer
+- Fermer la sélection ou remplissage du lasso polygonal : clic bouton droit
+- En mode sélection (Autofill décoché) : - touche Maj maintenue : ajouter / touche Maj + touche ctrl maintenues : soustraire
+- Outils loupe (Z) : touche Alt maintenue : loupe -
+
 ---
 
 ## 🎨 Interface de l'éditeur
