@@ -4,6 +4,212 @@
 (() => {
   if (!/\/extensions\/Orion4D_maskpro\/editor\.html$/i.test(location.pathname)) return;
 
+  const TRANSLATIONS = {
+    en: {
+      title: "MaskPro Editor",
+      zoom_label: "Zoom",
+      mask_only_label: "Mask Only",
+      mask_only_title: "Toggle mask view (M)",
+      clear_mask: "Clear Mask",
+      clear_mask_title: "Clear the entire mask (C)",
+      clear_selection: "Clear Selection",
+      clear_selection_title: "Deselect everything (Esc)",
+      fill_selection: "Fill Selection",
+      fill_selection_title: "Fill the current selection (A)",
+      invert: "Invert",
+      invert_title: "Invert the mask (I)",
+      export: "Export",
+      save_close: "Save & Close",
+      toolbox_toggle_title: "Toggle Global tools (T)",
+      erase_toggle_title: "Toggle erase (X)",
+      tool_hand_title: "Hand Tool (H)",
+      tool_brush_title: "Brush (B)",
+      tool_lasso_title: "Lasso (L)",
+      tool_poly_title: "Polygonal lasso (K)",
+      tool_ellipse_title: "Ellipse (E)",
+      tool_rect_title: "Rectangle (S)",
+      tool_grad_title: "Gradient (G)",
+      tool_wand_title: "Magic wand (W)",
+      tool_zoom_title: "Zoom Tool (Z)",
+      section_global_tools: "GLOBAL TOOLS",
+      label_blur_contour: "Blur Contour",
+      apply: "Apply",
+      label_smooth_mask: "Smooth Mask",
+      label_image_threshold: "Image Threshold",
+      label_mask_threshold: "Mask Threshold",
+      label_dilate_radius: "Dilate Radius",
+      label_contract_radius: "Contract Radius",
+      ai_cutout: "AI Cutout (rembg)",
+      section_brush: "BRUSH",
+      label_size: "Size",
+      label_hardness: "Hardness",
+      label_opacity: "Opacity",
+      label_smoothing: "Smoothing",
+      label_spacing: "Spacing (Step)",
+      label_shape: "Shape",
+      option_round: "Round",
+      option_square: "Square",
+      option_custom: "Custom",
+      label_brush_folder: "In /web/brushes :",
+      reload: "Reload",
+      label_file_name: "or file name:",
+      placeholder_brush_name: "mybrush.png",
+      load: "Load",
+      label_rotation: "Rotation",
+      open_brush_grid: "Open brush grid",
+      section_lasso: "LASSO",
+      label_autofill: "Autofill",
+      section_poly_lasso: "POLYGONAL LASSO",
+      hint_poly: "Left-click = point • Right-click or Alt = close • Esc = cancel",
+      section_ellipse: "ELLIPSE / CIRCLE",
+      label_center_origin: "Center origin (Alt)",
+      hint_circle: "Hold Ctrl for perfect circle",
+      section_rect: "RECTANGLE / SQUARE",
+      label_corner_radius: "Corner radius",
+      hint_square: "Hold Ctrl for perfect square",
+      section_gradient: "GRADIENT",
+      label_radial: "Radial",
+      hint_gradient: "Fills from solid → transparent along the line.",
+      section_wand: "MAGIC WAND",
+      label_mode: "Mode",
+      option_add: "+ Add",
+      option_subtract: "– Subtract",
+      label_tolerance: "Tolerance",
+      label_average: "Average",
+      modal_brush_title: "Custom brushes",
+      refresh: "Refresh",
+      close: "Close",
+      status_custom_brush_loaded: "Custom brush loaded ({size})",
+      status_custom_brush_load_failed: "Failed to load custom brush.",
+      status_brush_load_failed: "Failed to load brush.",
+      status_ai_cutout_running: "AI cutout…",
+      status_ai_cutout_done: "AI cutout done.",
+      status_api_open_failed: "API open failed.",
+      status_image_missing: "image.png missing. Use “Edit Mask” from the node.",
+      status_no_listing: "(no listing)"
+    },
+    zh: {
+      title: "MaskPro 编辑器",
+      zoom_label: "缩放",
+      mask_only_label: "仅遮罩",
+      mask_only_title: "切换遮罩预览（M）",
+      clear_mask: "清空遮罩",
+      clear_mask_title: "清除整个遮罩（C）",
+      clear_selection: "清除选区",
+      clear_selection_title: "取消所有选择（Esc）",
+      fill_selection: "填充选区",
+      fill_selection_title: "填充当前选区（A）",
+      invert: "反相",
+      invert_title: "反转遮罩（I）",
+      export: "导出",
+      save_close: "保存并关闭",
+      toolbox_toggle_title: "展开/收起全局工具（T）",
+      erase_toggle_title: "切换擦除模式（X）",
+      tool_hand_title: "手型工具（H）",
+      tool_brush_title: "画笔（B）",
+      tool_lasso_title: "套索（L）",
+      tool_poly_title: "多边形套索（K）",
+      tool_ellipse_title: "椭圆（E）",
+      tool_rect_title: "矩形（S）",
+      tool_grad_title: "渐变（G）",
+      tool_wand_title: "魔棒（W）",
+      tool_zoom_title: "缩放工具（Z）",
+      section_global_tools: "全局工具",
+      label_blur_contour: "羽化边缘",
+      apply: "应用",
+      label_smooth_mask: "平滑遮罩",
+      label_image_threshold: "图像阈值",
+      label_mask_threshold: "遮罩阈值",
+      label_dilate_radius: "膨胀半径",
+      label_contract_radius: "收缩半径",
+      ai_cutout: "AI 抠图（rembg）",
+      section_brush: "画笔",
+      label_size: "大小",
+      label_hardness: "硬度",
+      label_opacity: "不透明度",
+      label_smoothing: "平滑",
+      label_spacing: "间距（步长）",
+      label_shape: "形状",
+      option_round: "圆形",
+      option_square: "方形",
+      option_custom: "自定义",
+      label_brush_folder: "位于 /web/brushes ：",
+      reload: "刷新列表",
+      label_file_name: "或指定文件名：",
+      placeholder_brush_name: "mybrush.png",
+      load: "载入",
+      label_rotation: "旋转",
+      open_brush_grid: "打开笔刷网格",
+      section_lasso: "套索",
+      label_autofill: "自动填充",
+      section_poly_lasso: "多边形套索",
+      hint_poly: "左键=打点 • 右键或 Alt=闭合 • Esc=取消",
+      section_ellipse: "椭圆 / 圆形",
+      label_center_origin: "以中心为原点（Alt）",
+      hint_circle: "按住 Ctrl 可约束为正圆",
+      section_rect: "矩形 / 正方形",
+      label_corner_radius: "圆角半径",
+      hint_square: "按住 Ctrl 可约束为正方形",
+      section_gradient: "渐变",
+      label_radial: "径向",
+      hint_gradient: "沿绘制线条由实色过渡到透明。",
+      section_wand: "魔棒",
+      label_mode: "模式",
+      option_add: "＋ 添加",
+      option_subtract: "－ 减去",
+      label_tolerance: "容差",
+      label_average: "取样范围",
+      modal_brush_title: "自定义笔刷",
+      refresh: "刷新",
+      close: "关闭",
+      status_custom_brush_loaded: "自定义笔刷已载入（{size}）",
+      status_custom_brush_load_failed: "加载自定义笔刷失败。",
+      status_brush_load_failed: "加载笔刷失败。",
+      status_ai_cutout_running: "AI 抠图处理中…",
+      status_ai_cutout_done: "AI 抠图完成。",
+      status_api_open_failed: "读取缓存失败。",
+      status_image_missing: "缺少 image.png，请在节点中点击“编辑遮罩”。",
+      status_no_listing: "（没有可用文件）"
+    }
+  };
+
+  const docLang = (document.documentElement.lang || "").toLowerCase();
+  const navLang = (navigator.language || "").toLowerCase();
+  const locale = docLang.startsWith("zh") || navLang.startsWith("zh") ? "zh" : "en";
+
+  const formatString = (str, params = {}) =>
+    str.replace(/\{(\w+)\}/g, (_, key) => (key in params ? params[key] : `{${key}}`));
+
+  const t = (key, params) => {
+    const base = (TRANSLATIONS[locale] && TRANSLATIONS[locale][key]) ?? TRANSLATIONS.en[key] ?? key;
+    return params ? formatString(base, params) : base;
+  };
+
+  function applyLocalization(){
+    document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+    document.title = t("title");
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const key = el.dataset.i18n;
+      if (!key) return;
+      const value = t(key);
+      if (value !== undefined) el.textContent = value;
+    });
+    document.querySelectorAll("[data-i18n-title]").forEach(el => {
+      const key = el.dataset.i18nTitle;
+      if (!key) return;
+      const value = t(key);
+      if (value !== undefined) el.setAttribute("title", value);
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+      const key = el.dataset.i18nPlaceholder;
+      if (!key) return;
+      const value = t(key);
+      if (value !== undefined) el.setAttribute("placeholder", value);
+    });
+  }
+
+  applyLocalization();
+
   // ---------- helpers
   const $ = (id)=>document.getElementById(id);
   const qs=(s,r=document)=>r.querySelector(s);
@@ -14,6 +220,7 @@
 
   // ---------- DOM
   const canImg=$("img"), canOv=$("overlay");
+  const stageEl=$("stage");
   const ctxI=canImg.getContext("2d",{willReadFrequently:true});
   const ctxO=canOv.getContext("2d",{willReadFrequently:true});
   const appMain=$("app"), center=$("center"), stageOuter=$("stageOuter");
@@ -62,7 +269,19 @@
   const redo=()=>{ if(!redoStack.length) return; undoStack.push(new Uint8ClampedArray(alphaBuf)); alphaBuf.set(redoStack.pop()); refreshOverlay(); };
 
   // ---------- layout & drawing
-  function setSize(w,h){W=w;H=h;canImg.width=W;canImg.height=H;canOv.width=W;canOv.height=H;}
+  function setSize(w,h){
+    W=w;H=h;
+    canImg.width=W;canImg.height=H;
+    canOv.width=W;canOv.height=H;
+    if(stageEl){
+      stageEl.style.width = `${W}px`;
+      stageEl.style.height = `${H}px`;
+    }
+    if(stageOuter){
+      stageOuter.style.width = `${W}px`;
+      stageOuter.style.height = `${H}px`;
+    }
+  }
   function drawBackground(img){ctxI.clearRect(0,0,W,H); if(img) ctxI.drawImage(img,0,0,W,H);}
   function applyZoom(z, centerPoint = null){
     if (!centerPoint) {
@@ -255,12 +474,53 @@
   eraseToggleBtn.addEventListener("click",toggleErase);
 
   [brushShapeRound,shapeSquare,shapeCustom].forEach(r=>{r.addEventListener("change",()=>{ const on=shapeCustom.checked; customRow.style.display=customRow2.style.display=customRow3.style.display=customRowPicker.style.display=on?"flex":"none"; refreshOverlay();});});
-  async function listBrushes(){ let items=[]; try{ const r=await fetch(`/orion4d_maskpro/list_brushes?ts=${Date.now()}`,{cache:"no-store"}); if(r.ok){ const j=await r.json(); if(j && Array.isArray(j.files)) items=j.files; } }catch{} customList.innerHTML=""; if(!items.length){ const o=document.createElement("option"); o.value=""; o.textContent="(no listing)"; customList.appendChild(o); } else { for(const f of items){ const o=document.createElement("option"); o.value=f; o.textContent=f; customList.appendChild(o); } } }
+  async function listBrushes(){ let items=[]; try{ const r=await fetch(`/orion4d_maskpro/list_brushes?ts=${Date.now()}`,{cache:"no-store"}); if(r.ok){ const j=await r.json(); if(j && Array.isArray(j.files)) items=j.files; } }catch{} customList.innerHTML=""; if(!items.length){ const o=document.createElement("option"); o.value=""; o.textContent=t("status_no_listing"); customList.appendChild(o); } else { for(const f of items){ const o=document.createElement("option"); o.value=f; o.textContent=f; customList.appendChild(o); } } }
   reloadBrush.addEventListener("click", listBrushes); customList.addEventListener("change",()=> customName.value=customList.value);
-  async function loadCustomBrushByName(name){ const url=`${BRUSH_BASE}${encodeURIComponent(name)}`, blobURL=await toBlobURL(url); const img=new Image(); img.crossOrigin="anonymous"; await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; img.src=blobURL; }); customBrushImg=img; statusEl.textContent=`Custom brush loaded (${img.naturalWidth||img.width}×${img.naturalHeight||img.height})`; refreshOverlay(); }
-  loadBrush.addEventListener("click", async ()=>{ if(!customName.value) return; try{ await loadCustomBrushByName(customName.value); }catch{ statusEl.textContent="Failed to load custom brush."; } });
+  async function loadCustomBrushByName(name){ const url=`${BRUSH_BASE}${encodeURIComponent(name)}`, blobURL=await toBlobURL(url); const img=new Image(); img.crossOrigin="anonymous"; await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; img.src=blobURL; }); customBrushImg=img; const sizeLabel=`${img.naturalWidth||img.width}×${img.naturalHeight||img.height}`; statusEl.textContent=t("status_custom_brush_loaded",{size:sizeLabel}); refreshOverlay(); }
+  loadBrush.addEventListener("click", async ()=>{ if(!customName.value) return; try{ await loadCustomBrushByName(customName.value); }catch{ statusEl.textContent=t("status_custom_brush_load_failed"); } });
   function openBrushPicker(){ gridWrap.innerHTML = ""; gridModal.style.display = "flex"; fillBrushGrid(); }
-  async function fillBrushGrid(){ try{ const r=await fetch(`/orion4d_maskpro/list_brushes?ts=${Date.now()}`,{cache:"no-store"}); const j=r.ok?await r.json():{files:[]}; const files=j.files||[]; gridWrap.innerHTML=""; files.forEach(f=>{ const card=document.createElement("button"); card.className="btn"; card.style.cssText="padding:6px;display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;background:#1a1f26;border-color:#232a34"; const img=new Image(); img.src=`${BRUSH_BASE}${encodeURIComponent(f)}?ts=${Date.now()}`; img.width=96; img.height=96; img.style.objectFit="contain"; img.style.background="#ffffff"; img.loading="lazy"; const cap=document.createElement("div"); cap.textContent=f; cap.style.maxWidth="110px"; cap.style.whiteSpace="nowrap"; cap.style.overflow="hidden"; cap.style.textOverflow="ellipsis"; cap.className="muted"; card.appendChild(img); card.appendChild(cap); card.addEventListener("click", async()=>{ customName.value=f; gridModal.style.display="none"; try{ await loadCustomBrushByName(f); shapeCustom.checked=true; customRow.style.display=customRow2.style.display=customRow3.style.display=customRowPicker.style.display="flex"; forceTool("brush"); } catch{ statusEl.textContent="Failed to load brush."; } }); gridWrap.appendChild(card); }); }catch{} }
+  async function fillBrushGrid(){
+    try{
+      const r=await fetch(`/orion4d_maskpro/list_brushes?ts=${Date.now()}`,{cache:"no-store"});
+      const j=r.ok?await r.json():{files:[]};
+      const files=j.files||[];
+      gridWrap.innerHTML="";
+      files.forEach(f=>{
+        const card=document.createElement("button");
+        card.className="btn";
+        card.style.cssText="padding:6px;display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;background:#1a1f26;border-color:#232a34";
+        const img=new Image();
+        img.src=`${BRUSH_BASE}${encodeURIComponent(f)}?ts=${Date.now()}`;
+        img.width=96;
+        img.height=96;
+        img.style.objectFit="contain";
+        img.style.background="#ffffff";
+        img.loading="lazy";
+        const cap=document.createElement("div");
+        cap.textContent=f;
+        cap.style.maxWidth="110px";
+        cap.style.whiteSpace="nowrap";
+        cap.style.overflow="hidden";
+        cap.style.textOverflow="ellipsis";
+        cap.className="muted";
+        card.appendChild(img);
+        card.appendChild(cap);
+        card.addEventListener("click", async()=>{
+          customName.value=f;
+          gridModal.style.display="none";
+          try{
+            await loadCustomBrushByName(f);
+            shapeCustom.checked=true;
+            customRow.style.display=customRow2.style.display=customRow3.style.display=customRowPicker.style.display="flex";
+            forceTool("brush");
+          } catch{
+            statusEl.textContent=t("status_brush_load_failed");
+          }
+        });
+        gridWrap.appendChild(card);
+      });
+    }catch{}
+  }
   openBrushGrid?.addEventListener("click", openBrushPicker); gridRefresh?.addEventListener("click", fillBrushGrid); gridClose?.addEventListener("click", ()=> gridModal.style.display="none"); gridModal?.addEventListener("click",(e)=>{ if(e.target===gridModal) gridModal.style.display="none"; });
   (function(){ const panel=$('globalTools'); function setToolboxUI(on){ toolboxBtn.classList.toggle('on',!!on); if(panel){ panel.open=!!on; } } setToolboxUI(panel?.open!==false); toolboxBtn.addEventListener("click", ()=> setToolboxUI(!(panel?.open))); window.addEventListener("keydown",(e)=>{ if(e.key.toLowerCase()==='t' && e.target.tagName!=="INPUT"){ setToolboxUI(!(panel?.open)); }}); })();
 
@@ -474,7 +734,29 @@
   applyImgThresholdBtn.addEventListener("click",()=>{ pushHistory(); const d=ctxI.getImageData(0,0,W,H).data; const t=parseInt(qs("#imgThreshold").value,10); for(let i=0, j=0; i<d.length; i+=4, j++) alphaBuf[j]=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)>t?255:0; refreshOverlay(); });
   applyMaskThresholdBtn.addEventListener("click",()=>{ pushHistory(); const t=parseInt(qs("#maskThreshold").value, 10); for(let i=0; i<alphaBuf.length; i++) alphaBuf[i]=alphaBuf[i]>t?255:0; refreshOverlay(); });
 
-  aiCutBtn?.addEventListener("click", async ()=>{ try{ statusEl.textContent = "AI cutout…"; const r = await fetch(`/orion4d_maskpro/rembg?node_id=${encodeURIComponent(nodeId)}`, { method:"POST" }); if(!r.ok) throw new Error(`HTTP ${r.status}`); const { ok } = await r.json(); if(!ok) throw new Error("rembg failed"); const mURL = await toBlobURL(`/orion4d_maskpro/static/maskpro_${nodeId}/mask.png?ts=${Date.now()}`); const m=new Image(); m.crossOrigin="anonymous"; await new Promise((res)=>{ m.onload=res; m.onerror=res; m.src=mURL; }); const t=document.createElement("canvas"); t.width=W; t.height=H; const tc=t.getContext("2d",{willReadFrequently:true}); tc.drawImage(m,0,0,W,H); const d=tc.getImageData(0,0,W,H).data; pushHistory(); for(let i=0,j=0;i<d.length;i+=4,j++) alphaBuf[j]=d[i]; refreshOverlay(); statusEl.textContent="AI cutout done."; }catch(err){ statusEl.textContent = String(err?.message||err); } });
+  aiCutBtn?.addEventListener("click", async ()=>{
+    try{
+      statusEl.textContent = t("status_ai_cutout_running");
+      const form = new FormData();
+      form.append("node_id", String(nodeId ?? ""));
+      const r = await fetch(`/orion4d_maskpro/rembg`, { method:"POST", body: form });
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      const { ok, error } = await r.json();
+      if(!ok) throw new Error(error || "rembg failed");
+      const mURL = await toBlobURL(`/orion4d_maskpro/static/maskpro_${nodeId}/mask.png?ts=${Date.now()}`);
+      const m=new Image(); m.crossOrigin="anonymous";
+      await new Promise((res)=>{ m.onload=res; m.onerror=res; m.src=mURL; });
+      const t=document.createElement("canvas"); t.width=W; t.height=H; const tc=t.getContext("2d",{willReadFrequently:true});
+      tc.drawImage(m,0,0,W,H);
+      const d=tc.getImageData(0,0,W,H).data;
+      pushHistory();
+      for(let i=0,j=0;i<d.length;i+=4,j++) alphaBuf[j]=d[i];
+      refreshOverlay();
+      statusEl.textContent=t("status_ai_cutout_done");
+    }catch(err){
+      statusEl.textContent = String(err?.message||err);
+    }
+  });
   exportBtn.addEventListener("click",()=>{ const out=document.createElement("canvas"); out.width=W; out.height=H; const o=out.getContext("2d"); const id=o.createImageData(W,H), d=id.data; for(let i=0,p=0;i<W*H;i++,p+=4){const g=alphaBuf[i]||0; d[p]=g; d[p+1]=g; d[p+2]=g; d[p+3]=255;} o.putImageData(id,0,0); out.toBlob(b=>{const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download="mask.png"; a.click(); URL.revokeObjectURL(a.href);},"image/png"); });
   saveBtn.addEventListener("click", async ()=>{ try{ const out=document.createElement("canvas"); out.width=W; out.height=H; const o=out.getContext("2d"); const id=o.createImageData(W,H), d=id.data; for(let i=0,p=0;i<W*H;i++,p+=4){d[p]=0; d[p+1]=0; d[p+2]=0; d[p+3]=alphaBuf[i]||0;} o.putImageData(id,0,0); const maskBlob=await new Promise((res,rej)=> out.toBlob(b=>b?res(b):rej(new Error("toBlob failed")),"image/png")); const fd=new FormData(); fd.append("node_id",String(nodeId)); fd.append("mask",maskBlob,"mask.png"); const r=await fetch("/orion4d_maskpro/save",{method:"POST",body:fd}); if(!r.ok) throw new Error(`Save failed: HTTP ${r.status}`); window.opener?.postMessage({type:"maskpro:saved",nodeId},location.origin); window.close(); }catch(err){ statusEl.textContent=String(err?.message||err); } });
 
@@ -482,9 +764,9 @@
     try{
       await listBrushes();
       const metaRes=await fetch(`/orion4d_maskpro/open?node_id=${encodeURIComponent(nodeId)}`,{cache:"no-store"});
-      if(!metaRes.ok){ statusEl.textContent="API open failed."; return; }
+      if(!metaRes.ok){ statusEl.textContent=t("status_api_open_failed"); return; }
       const meta=await metaRes.json();
-      if(!meta.image_exists){ statusEl.textContent="image.png missing. Use “Edit Mask” from the node."; return; }
+      if(!meta.image_exists){ statusEl.textContent=t("status_image_missing"); return; }
 
       const imgURL=await toBlobURL(`/orion4d_maskpro/static/maskpro_${nodeId}/image.png?ts=${Date.now()}`);
       const img=new Image(); img.crossOrigin="anonymous";
