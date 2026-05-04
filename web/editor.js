@@ -1,6 +1,6 @@
 // Orion4D MaskPro — Editor (full, with: 2048px brush, custom PNG transparency+rotation,
 // brush grid picker, hand tool, magic wand, wheel zoom at cursor, undo/redo,
-// global tools in top bar (blur/dilate/contract + rembg AI), export opaque PNG).
+// global tools, BiRefNet AI cutout panel, export opaque PNG).
 (() => {
   if (!/\/extensions\/Orion4D_maskpro\/editor\.html$/i.test(location.pathname)) return;
 
@@ -16,7 +16,7 @@
   const canImg=$("img"), canOv=$("overlay");
   const ctxI=canImg.getContext("2d",{willReadFrequently:true});
   const ctxO=canOv.getContext("2d",{willReadFrequently:true});
-  const appMain=$("app"), center=$("center"), stageOuter=$("stageOuter");
+  const appMain=$("app"), center=$("center"), stageOuter=$("stageOuter"), stage=$("stage");
   const resizer=$("resizer"), statusEl=$("status");
   const toolPalette=$("toolPalette"), rightbar=$("toolSettings");
 
@@ -24,7 +24,8 @@
   const zoomEl=$("zoom"), zoomVal=$("zoomVal"), maskOnlyEl=$("maskOnly");
   const clearBtn=$("clear"), clearSelectionBtn=$("clearSelection"), fillSelectionBtn=$("fillSelection"), invertBtn=$("invert"), exportBtn=$("export"), saveBtn=$("saveClose");
   const applyBlurBtn=$("applyBlur"), applySmoothBtn=$("applySmooth"), applyImgThresholdBtn=$("applyImgThreshold");
-  const applyMaskThresholdBtn=$("applyMaskThreshold"), applyDilateBtn=$("applyDilate"), applyErodeBtn=$("applyErode"), aiCutBtn=$("aiCutout");
+  const applyMaskThresholdBtn=$("applyMaskThreshold"), applyDilateBtn=$("applyDilate"), applyErodeBtn=$("applyErode");
+  const aiToggle=$("aiToggle"), aiTools=$("aiTools"), aiModelDir=$("aiModelDir"), aiModelFile=$("aiModelFile"), aiKeepCurrentMask=$("aiKeepCurrentMask"), aiApply=$("aiApply"), aiStatus=$("aiStatus");
   
   // palette buttons
   const toolboxBtn=$("toolboxBtn"), eraseToggleBtn=$("eraseToggle");
@@ -62,31 +63,81 @@
   const redo=()=>{ if(!redoStack.length) return; undoStack.push(new Uint8ClampedArray(alphaBuf)); alphaBuf.set(redoStack.pop()); refreshOverlay(); };
 
   // ---------- layout & drawing
-  function setSize(w,h){W=w;H=h;canImg.width=W;canImg.height=H;canOv.width=W;canOv.height=H;}
+  let stageOffsetX = 0;
+  let stageOffsetY = 0;
+
+  function updateStageLayout(){
+    if(!W || !H || !stage || !stageOuter || !center) return;
+    const sw = Math.max(1, W * zoom);
+    const sh = Math.max(1, H * zoom);
+    const vw = Math.max(1, center.clientWidth || Math.floor(center.getBoundingClientRect().width) || 1);
+    const vh = Math.max(1, center.clientHeight || Math.floor(center.getBoundingClientRect().height) || 1);
+
+    // The scroll container keeps the scaled size; the actual canvas is translated manually.
+    // This avoids the classic transform/flex bug where a scaled image returns to the left after F5.
+    stageOffsetX = Math.max(0, (vw - sw) / 2);
+    stageOffsetY = 0;
+
+    stageOuter.style.width = `${Math.ceil(Math.max(vw, sw))}px`;
+    stageOuter.style.height = `${Math.ceil(Math.max(vh, sh))}px`;
+    stage.style.left = `${stageOffsetX}px`;
+    stage.style.top = `${stageOffsetY}px`;
+    stage.style.transformOrigin = "0 0";
+    stage.style.transform = `scale(${zoom})`;
+  }
+
+  function setSize(w,h){W=w;H=h;canImg.width=W;canImg.height=H;canOv.width=W;canOv.height=H; updateStageLayout();}
   function drawBackground(img){ctxI.clearRect(0,0,W,H); if(img) ctxI.drawImage(img,0,0,W,H);}
+
   function applyZoom(z, centerPoint = null){
+    const rect = center.getBoundingClientRect();
     if (!centerPoint) {
-      const rect = center.getBoundingClientRect();
-      centerPoint = { x: rect.width / 2, y: rect.height / 2, scrollX: center.scrollLeft, scrollY: center.scrollTop };
+      centerPoint = { x: rect.width / 2, y: Math.min(rect.height / 2, 180), scrollX: center.scrollLeft, scrollY: center.scrollTop };
     }
-    const oldZoom = zoom;
+
+    const oldZoom = zoom || 1;
+    const oldOffX = stageOffsetX || 0;
+    const oldOffY = stageOffsetY || 0;
+    const focusImgX = (centerPoint.scrollX + centerPoint.x - oldOffX) / oldZoom;
+    const focusImgY = (centerPoint.scrollY + centerPoint.y - oldOffY) / oldZoom;
+
     zoom = clamp(z, 0.1, 10);
-    stageOuter.style.transform = `scale(${zoom})`;
+    updateStageLayout();
     zoomEl.value = Math.round(zoom * 100);
     qs("#zoomVal").textContent = `${Math.round(zoom * 100)}%`;
-    
-    center.scrollLeft = centerPoint.scrollX + centerPoint.x * (zoom / oldZoom - 1);
-    center.scrollTop = centerPoint.scrollY + centerPoint.y * (zoom / oldZoom - 1);
+
+    center.scrollLeft = Math.max(0, focusImgX * zoom + stageOffsetX - centerPoint.x);
+    center.scrollTop = Math.max(0, focusImgY * zoom + stageOffsetY - centerPoint.y);
   }
-  function fitToViewport(){ const vb=center.getBoundingClientRect(), pad=48; const z=Math.max(0.1,Math.min((vb.width-pad)/W,(vb.height-pad)/H)); applyZoom(z); }
+
+  function centerTopView(){
+    requestAnimationFrame(()=>{
+      updateStageLayout();
+      center.scrollLeft = 0;
+      center.scrollTop = 0;
+    });
+  }
+
+  function fitToViewport(){
+    const vb=center.getBoundingClientRect(), padX=56, padY=32;
+    const z=Math.max(0.1,Math.min((vb.width-padX)/W,(vb.height-padY)/H));
+    zoom = clamp(z, 0.1, 10);
+    updateStageLayout();
+    zoomEl.value = Math.round(zoom * 100);
+    qs("#zoomVal").textContent = `${Math.round(zoom * 100)}%`;
+    centerTopView();
+  }
+
   function screenToImage(cx,cy){ const r=canOv.getBoundingClientRect(); return [(cx-r.left)/zoom, (cy-r.top)/zoom]; }
 
   (function(){
     let dragging=false,startX=0,startW=360; const parseCols=()=>(getComputedStyle(appMain).gridTemplateColumns||"64px 1fr 8px 360px").split(" ");
     resizer.addEventListener("mousedown",(e)=>{dragging=true;startX=e.clientX;startW=parseInt(parseCols()[3])||360;document.body.style.cursor="col-resize";e.preventDefault();});
-    window.addEventListener("mousemove",(e)=>{if(!dragging)return;const dx=e.clientX-startX;const w=clamp(startW-dx,220,680);appMain.style.gridTemplateColumns=`64px 1fr 8px ${w}px`;});
+    window.addEventListener("mousemove",(e)=>{if(!dragging)return;const dx=e.clientX-startX;const w=clamp(startW-dx,220,680);appMain.style.gridTemplateColumns=`64px 1fr 8px ${w}px`; requestAnimationFrame(updateStageLayout);});
     window.addEventListener("mouseup",()=>{dragging=false;document.body.style.cursor="";});
   })();
+
+  window.addEventListener("resize",()=>{ requestAnimationFrame(updateStageLayout); });
 
   center.addEventListener("wheel",(e)=>{
     e.preventDefault();
@@ -221,6 +272,111 @@
   function applySelection(sel,op01,erase){
     const opa=clamp(op01,0,1)*255;
     for(let i=0;i<sel.length;i++){ if(sel[i]>0){ const val=(sel[i]/255)*opa; alphaBuf[i]=erase?clamp(alphaBuf[i]-val,0,255):clamp(alphaBuf[i]+val,0,255); } }
+  }
+
+  async function loadMaskFromCacheIntoEditor({history=false} = {}){
+    if(!alphaBuf || !W || !H) return false;
+    const mURL=await toBlobURL(`/orion4d_maskpro/static/maskpro_${nodeId}/mask.png?ts=${Date.now()}`);
+    const m=new Image(); m.crossOrigin="anonymous";
+    await new Promise((res)=>{ m.onload=res; m.onerror=res; m.src=mURL; });
+    const t=document.createElement("canvas"); t.width=W; t.height=H;
+    const tc=t.getContext("2d",{willReadFrequently:true});
+    const mw=m.naturalWidth||m.width||W, mh=m.naturalHeight||m.height||H;
+    const dx=Math.floor((W-mw)/2), dy=Math.floor((H-mh)/2);
+    tc.clearRect(0,0,W,H);
+    tc.drawImage(m,dx,dy);
+    const d=tc.getImageData(0,0,W,H).data;
+    if(history) pushHistory();
+    let alphaSignal=false;
+    for(let i=3;i<d.length;i+=4){ if(d[i]!==255){ alphaSignal=true; break; } }
+    if(alphaSignal){
+      for(let i=0,j=0;i<d.length;i+=4,j++) alphaBuf[j]=d[i+3];
+    } else {
+      for(let i=0,j=0;i<d.length;i+=4,j++) alphaBuf[j]=(d[i]+d[i+1]+d[i+2])/3;
+    }
+    refreshOverlay();
+    return true;
+  }
+
+  async function populateAIFolders(){
+    if(!aiModelDir || !aiModelFile) return;
+    try{
+      const r=await fetch(`/orion4d_maskpro/ai_model_folders?ts=${Date.now()}`,{cache:"no-store"});
+      const j=r.ok ? await r.json() : {folders:[], default_folder:"BiRefNet"};
+      const folders=Array.isArray(j.folders) ? j.folders : [];
+      aiModelDir.innerHTML="";
+      if(!folders.length){
+        const o=document.createElement("option"); o.value="BiRefNet"; o.textContent="models\BiRefNet"; aiModelDir.appendChild(o);
+      } else {
+        for(const item of folders){
+          const value=typeof item==="string" ? item : item.value;
+          const label=typeof item==="string" ? `models\${item}` : (item.label || `models\${value}`);
+          const o=document.createElement("option"); o.value=value; o.textContent=label; aiModelDir.appendChild(o);
+        }
+      }
+      const preferred=j.default_folder || "BiRefNet";
+      if([...aiModelDir.options].some(o=>o.value===preferred)) aiModelDir.value=preferred;
+      await populateAIModels();
+    }catch(err){
+      if(aiStatus) aiStatus.textContent=String(err?.message||err);
+    }
+  }
+
+  async function populateAIModels(){
+    if(!aiModelDir || !aiModelFile) return;
+    const folder=aiModelDir.value || "BiRefNet";
+    aiModelFile.innerHTML='<option value="">Loading…</option>';
+    try{
+      const r=await fetch(`/orion4d_maskpro/ai_models?folder=${encodeURIComponent(folder)}&ts=${Date.now()}`,{cache:"no-store"});
+      const j=r.ok ? await r.json() : {models:[]};
+      const models=Array.isArray(j.models) ? j.models : [];
+      aiModelFile.innerHTML="";
+      if(!models.length){
+        const o=document.createElement("option"); o.value=""; o.textContent="No model found"; aiModelFile.appendChild(o);
+        if(aiStatus) aiStatus.textContent=`No model found in models\${folder}`;
+        return;
+      }
+      for(const item of models){
+        const value=typeof item==="string" ? item : item.value;
+        const label=typeof item==="string" ? item : (item.label || value);
+        const o=document.createElement("option"); o.value=value; o.textContent=label; aiModelFile.appendChild(o);
+      }
+      if(j.default_model && [...aiModelFile.options].some(o=>o.value===j.default_model)) aiModelFile.value=j.default_model;
+      if(aiStatus) aiStatus.textContent=`${models.length} model(s) ready.`;
+    }catch(err){
+      aiModelFile.innerHTML='<option value="">Model list error</option>';
+      if(aiStatus) aiStatus.textContent=String(err?.message||err);
+    }
+  }
+
+  async function saveAlphaBufferToCache(){
+    if(!alphaBuf || !W || !H) throw new Error("No mask buffer to save.");
+    const out=document.createElement("canvas");
+    out.width=W; out.height=H;
+    const o=out.getContext("2d");
+    const id=o.createImageData(W,H), d=id.data;
+    for(let i=0,p=0;i<W*H;i++,p+=4){
+      d[p]=0; d[p+1]=0; d[p+2]=0; d[p+3]=alphaBuf[i]||0;
+    }
+    o.putImageData(id,0,0);
+    const maskBlob=await new Promise((res,rej)=> out.toBlob(b=>b?res(b):rej(new Error("toBlob failed")),"image/png"));
+    const fd=new FormData();
+    fd.append("node_id",String(nodeId));
+    fd.append("mask",maskBlob,"mask.png");
+    const r=await fetch("/orion4d_maskpro/save",{method:"POST",body:fd});
+    if(!r.ok) throw new Error(`Mask cache save failed: HTTP ${r.status}`);
+  }
+
+  function mergePreviousMaskIntoCurrent(previousMask){
+    if(!previousMask || !alphaBuf) return false;
+    const n=Math.min(previousMask.length, alphaBuf.length);
+    let changed=false;
+    for(let i=0;i<n;i++){
+      const v=previousMask[i];
+      if(v>alphaBuf[i]){ alphaBuf[i]=v; changed=true; }
+    }
+    if(changed) refreshOverlay();
+    return changed;
   }
   function rasterPolygon(pts){ const t=document.createElement("canvas");t.width=W;t.height=H; const tc=t.getContext("2d",{willReadFrequently:true}); tc.fillStyle="#fff";tc.beginPath();tc.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)tc.lineTo(pts[i].x,pts[i].y);tc.closePath();tc.fill(); const d=tc.getImageData(0,0,W,H).data, sel=new Uint8ClampedArray(W*H); for(let i=0,j=0;i<d.length;i+=4,j++) sel[j]=d[i]; return sel; }
   function rasterEllipseRect(kind,x,y,w,h){ const t=document.createElement("canvas");t.width=W;t.height=H;const tc=t.getContext("2d",{willReadFrequently:true});tc.fillStyle="#fff"; if(kind==="ellipse"){tc.beginPath(); if(w>0&&h>0)tc.ellipse(x+w/2,y+h/2,w/2,h/2,0,0,Math.PI*2);tc.closePath();tc.fill();} else {tc.fillRect(x,y,w,h);} const d=tc.getImageData(0,0,W,H).data, sel=new Uint8ClampedArray(W*H); for(let i=0,j=0;i<d.length;i+=4,j++) sel[j]=d[i]; return sel; }
@@ -474,7 +630,60 @@
   applyImgThresholdBtn.addEventListener("click",()=>{ pushHistory(); const d=ctxI.getImageData(0,0,W,H).data; const t=parseInt(qs("#imgThreshold").value,10); for(let i=0, j=0; i<d.length; i+=4, j++) alphaBuf[j]=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)>t?255:0; refreshOverlay(); });
   applyMaskThresholdBtn.addEventListener("click",()=>{ pushHistory(); const t=parseInt(qs("#maskThreshold").value, 10); for(let i=0; i<alphaBuf.length; i++) alphaBuf[i]=alphaBuf[i]>t?255:0; refreshOverlay(); });
 
-  aiCutBtn?.addEventListener("click", async ()=>{ try{ statusEl.textContent = "AI cutout…"; const r = await fetch(`/orion4d_maskpro/rembg?node_id=${encodeURIComponent(nodeId)}`, { method:"POST" }); if(!r.ok) throw new Error(`HTTP ${r.status}`); const { ok } = await r.json(); if(!ok) throw new Error("rembg failed"); const mURL = await toBlobURL(`/orion4d_maskpro/static/maskpro_${nodeId}/mask.png?ts=${Date.now()}`); const m=new Image(); m.crossOrigin="anonymous"; await new Promise((res)=>{ m.onload=res; m.onerror=res; m.src=mURL; }); const t=document.createElement("canvas"); t.width=W; t.height=H; const tc=t.getContext("2d",{willReadFrequently:true}); tc.drawImage(m,0,0,W,H); const d=tc.getImageData(0,0,W,H).data; pushHistory(); for(let i=0,j=0;i<d.length;i+=4,j++) alphaBuf[j]=d[i]; refreshOverlay(); statusEl.textContent="AI cutout done."; }catch(err){ statusEl.textContent = String(err?.message||err); } });
+  aiToggle?.addEventListener("click", async ()=>{
+    const open=!aiTools?.classList.contains("open");
+    aiTools?.classList.toggle("open", open);
+    aiToggle.classList.toggle("on", open);
+    aiToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    if(open && aiModelDir && aiModelFile && !aiModelDir.dataset.loaded){
+      aiModelDir.dataset.loaded="1";
+      await populateAIFolders();
+    }
+  });
+  aiModelDir?.addEventListener("change", populateAIModels);
+  aiApply?.addEventListener("click", async ()=>{
+    try{
+      const folder=aiModelDir?.value || "BiRefNet";
+      const model=aiModelFile?.value || "";
+      const keepCurrentMask=!!aiKeepCurrentMask?.checked;
+      const previousMask=(keepCurrentMask && alphaBuf) ? new Uint8ClampedArray(alphaBuf) : null;
+      if(!model) throw new Error("No AI model selected.");
+      const label=aiModelFile?.selectedOptions?.[0]?.textContent || model;
+      const msg=`AI cutout with ${label}${keepCurrentMask ? " (merge current mask)" : ""}…`;
+      statusEl.textContent=msg; if(aiStatus) aiStatus.textContent=msg;
+
+      // Important: the server can only merge with what is already in mask.png.
+      // Save the live editor mask first, otherwise unsaved brush/shape edits would be replaced.
+      if(keepCurrentMask && previousMask){
+        await saveAlphaBufferToCache();
+      }
+
+      const fd=new FormData();
+      fd.append("node_id", String(nodeId));
+      fd.append("model_folder", folder);
+      fd.append("model_file", model);
+      fd.append("keep_current_mask", keepCurrentMask ? "1" : "0");
+      const r=await fetch("/orion4d_maskpro/ai_cutout", { method:"POST", body:fd });
+      const j=await r.json().catch(()=>({ok:false,error:`HTTP ${r.status}`}));
+      if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+
+      await loadMaskFromCacheIntoEditor({history:true});
+
+      // Client-side safety merge: even if the backend only returned the AI mask,
+      // keep the visible editor mask by OR/max compositing with the pre-AI buffer.
+      if(previousMask){
+        const changed=mergePreviousMaskIntoCurrent(previousMask);
+        if(changed) await saveAlphaBufferToCache();
+      }
+
+      const done=`AI cutout done: ${j.model || label}${keepCurrentMask ? " (merged with current mask)" : ""}.`;
+      statusEl.textContent=done; if(aiStatus) aiStatus.textContent=done;
+    }catch(err){
+      const msg=String(err?.message||err);
+      statusEl.textContent=msg; if(aiStatus) aiStatus.textContent=msg;
+    }
+  });
+
   exportBtn.addEventListener("click",()=>{ const out=document.createElement("canvas"); out.width=W; out.height=H; const o=out.getContext("2d"); const id=o.createImageData(W,H), d=id.data; for(let i=0,p=0;i<W*H;i++,p+=4){const g=alphaBuf[i]||0; d[p]=g; d[p+1]=g; d[p+2]=g; d[p+3]=255;} o.putImageData(id,0,0); out.toBlob(b=>{const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download="mask.png"; a.click(); URL.revokeObjectURL(a.href);},"image/png"); });
   saveBtn.addEventListener("click", async ()=>{ try{ const out=document.createElement("canvas"); out.width=W; out.height=H; const o=out.getContext("2d"); const id=o.createImageData(W,H), d=id.data; for(let i=0,p=0;i<W*H;i++,p+=4){d[p]=0; d[p+1]=0; d[p+2]=0; d[p+3]=alphaBuf[i]||0;} o.putImageData(id,0,0); const maskBlob=await new Promise((res,rej)=> out.toBlob(b=>b?res(b):rej(new Error("toBlob failed")),"image/png")); const fd=new FormData(); fd.append("node_id",String(nodeId)); fd.append("mask",maskBlob,"mask.png"); const r=await fetch("/orion4d_maskpro/save",{method:"POST",body:fd}); if(!r.ok) throw new Error(`Save failed: HTTP ${r.status}`); window.opener?.postMessage({type:"maskpro:saved",nodeId},location.origin); window.close(); }catch(err){ statusEl.textContent=String(err?.message||err); } });
 
@@ -495,14 +704,7 @@
       alphaBuf=new Uint8ClampedArray(W*H); currentSelection=new Uint8ClampedArray(W*H); selectionEdges=new Uint8ClampedArray(W*H);
 
       if(meta.mask_exists){
-        const mURL=await toBlobURL(`/orion4d_maskpro/static/maskpro_${nodeId}/mask.png?ts=${Date.now()}`);
-        const m=new Image(); m.crossOrigin="anonymous";
-        await new Promise((res)=>{ m.onload=res; m.onerror=res; m.src=mURL; });
-        const t=document.createElement("canvas"); t.width=W; t.height=H; const tc=t.getContext("2d",{willReadFrequently:true});
-        const mw=m.naturalWidth||m.width, mh=m.naturalHeight||m.height; const dx=Math.floor((W-mw)/2), dy=Math.floor((H-mh)/2); tc.drawImage(m,dx,dy);
-        const d=tc.getImageData(0,0,W,H).data; let alphaSignal=false; for(let i=3;i<d.length;i+=4) if(d[i]!==255){alphaSignal=true;break;}
-        if(alphaSignal) for(let i=0,j=0;i<d.length;i+=4,j++) alphaBuf[j]=d[i+3];
-        else { let whites=0,blacks=0; for(let i=0;i<d.length;i+=4){const g=(d[i]+d[i+1]+d[i+2])/3; if(g>200) whites++; else if(g<55) blacks++;} const inv=whites>blacks*2; for(let i=0,j=0;i<d.length;i+=4,j++){const g=(d[i]+d[i+1]+d[i+2])/3; alphaBuf[j]=inv?(255-g):g;} }
+        await loadMaskFromCacheIntoEditor({history:false});
       }
 
       setTool("brush"); setEraseUI();
@@ -523,7 +725,7 @@
       customRot.addEventListener("input", () => qs("#customRotVal").textContent = `${customRot.value}°`);
       qs("#customRotVal").textContent = `${customRot.value}°`;
       
-      fitToViewport(); refreshOverlay();
+      fitToViewport(); centerTopView(); refreshOverlay();
     }catch(e){ statusEl.textContent=String(e?.message||e); }
   })();
 

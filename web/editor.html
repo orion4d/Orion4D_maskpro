@@ -9,19 +9,24 @@
       --bg:#0f1216;--panel:#14171b;--line:#232832;--muted:#9aa3ad;--txt:#eaf0f6;--blue:#2ea8ff;--btn:#1a1f26;
     }
     html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial}
+    body{margin:0;height:100%;display:flex;flex-direction:column;background:var(--bg);color:var(--txt);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial}
     .row{display:flex;align-items:center;gap:.5rem}
     .btn{background:var(--btn);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:.35rem .6rem;cursor:pointer}
+    .btn.toggle{width:100%;display:flex;justify-content:center;font-weight:700;letter-spacing:.02em}
+    .btn.toggle.on{background:#143250;border-color:var(--blue);box-shadow:0 0 0 1px #2ea8ff55 inset}
     .btn:active{transform:translateY(1px)}
     .lab{opacity:.8}
     .val{opacity:.7}
     input[type="range"]{accent-color:var(--blue); flex:1;}
     .chk{display:inline-flex;align-items:center;gap:.35rem}
     .muted{color:var(--muted)}
-    header#topbar{display:flex;gap:.75rem;align-items:center;padding:.55rem .75rem;border-bottom:1px solid var(--line);background:#15171b;position:sticky;top:0;z-index:20}
+    header#topbar{display:flex;gap:.75rem;align-items:center;padding:.55rem .75rem;border-bottom:1px solid var(--line);background:#15171b;position:relative;z-index:20;flex:0 0 auto}
     #status{margin-left:auto;opacity:.8}
+    #shortcutBar{display:flex;gap:.45rem;align-items:center;flex-wrap:wrap;padding:.35rem .75rem;border-bottom:1px solid var(--line);background:#101318;color:var(--muted);font-size:12px;line-height:1.2;flex:0 0 auto}
+    #shortcutBar .key{display:inline-flex;align-items:center;gap:.2rem;background:#171c23;border:1px solid #252b35;border-radius:6px;padding:.15rem .38rem;color:#d9e2ec;white-space:nowrap}
+    #shortcutBar b{font-weight:700;color:#fff}
 
-    main#app{display:grid;grid-template-columns:64px 1fr 8px 360px;grid-template-rows:1fr;height:calc(100vh - 50px)}
+    main#app{display:grid;grid-template-columns:64px 1fr 8px 360px;grid-template-rows:minmax(0,1fr);flex:1 1 auto;min-height:0}
     #toolPalette{display:flex;flex-direction:column;gap:6px;background:#101317;border-right:1px solid var(--line);padding:6px}
     #toolPalette .tool{width:48px;height:48px;border-radius:10px;display:grid;place-items:center;background:#12151a;border:1px solid #1f2329;cursor:pointer}
     #toolPalette .tool.active{outline:2px solid var(--blue)}
@@ -29,10 +34,9 @@
     #eraseToggle.on{outline:2px solid #ff7373}
     #toolboxBtn.on{outline:2px solid var(--blue)}
 
-    #center{position:relative;overflow:auto;background:#0b0d11}
-    /* MODIFICATION ICI pour le centrage */
-    #stageOuter{position:relative;width:100%;min-height:100%;display:flex;justify-content:center;align-items:center;transform-origin:0 0;}
-    #stage{position:relative;display:inline-block; /* margin:0; -> retiré pour que align-items fonctionne bien */}
+    #center{position:relative;overflow:auto;background:#0b0d11;min-width:0;min-height:0}
+    #stageOuter{position:relative;width:100%;min-height:100%;box-sizing:border-box;overflow:visible;}
+    #stage{position:absolute;left:0;top:0;display:inline-block;transform-origin:0 0;}
     #stage canvas{display:block}
     #overlay{position:absolute;left:0;top:0;pointer-events:auto; cursor: crosshair;}
 
@@ -48,6 +52,11 @@
     .setting-group label { display: block; margin-bottom: 0.25rem; opacity: 0.8; }
     .setting-group input[type=number] { width: 60px; background: #0f1216; border: 1px solid var(--line); color: var(--txt); border-radius: 6px; padding: .3rem .5rem; }
     .setting-group input[type=number]:focus { outline: 1px solid var(--blue); }
+    .setting-group select{width:100%;background:#0f1216;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:.42rem .5rem}
+    .setting-group select:focus{outline:1px solid var(--blue)}
+    #aiTools{display:none}
+    #aiTools.open{display:block}
+    #aiApply{width:100%;margin-top:.35rem}
     #brushGridModal{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;z-index:50}
   </style>
 </head>
@@ -63,6 +72,25 @@
     <button id="saveClose" class="btn">Save &amp; Close</button>
     <div id="status" class="muted"></div>
   </header>
+  <div id="shortcutBar" aria-label="Keyboard shortcuts">
+    <span class="key"><b>B</b> Brush</span>
+    <span class="key"><b>H</b> Hand</span>
+    <span class="key"><b>Space</b> Pan</span>
+    <span class="key"><b>X</b> Erase</span>
+    <span class="key"><b>M</b> Mask only</span>
+    <span class="key"><b>W</b> Wand</span>
+    <span class="key"><b>L</b> Lasso</span>
+    <span class="key"><b>K</b> Poly</span>
+    <span class="key"><b>S</b> Rect</span>
+    <span class="key"><b>E</b> Ellipse</span>
+    <span class="key"><b>G</b> Gradient</span>
+    <span class="key"><b>Z</b> Zoom</span>
+    <span class="key"><b>Ctrl+Z</b> Undo</span>
+    <span class="key"><b>Ctrl+Y</b> Redo</span>
+    <span class="key"><b>A</b> Fill</span>
+    <span class="key"><b>I</b> Invert</span>
+    <span class="key"><b>Esc</b> Clear selection</span>
+  </div>
 
   <main id="app">
     <aside id="toolPalette">
@@ -82,6 +110,27 @@
     <div id="resizer"></div>
 
     <aside id="toolSettings">
+      <button id="aiToggle" class="btn toggle" type="button" aria-expanded="false" title="AI cutout settings">AI</button>
+      <details id="aiTools" class="group" open>
+        <summary>AI CUTOUT</summary>
+        <div>
+          <div class="setting-group">
+            <label for="aiModelDir">Models folder</label>
+            <select id="aiModelDir"><option value="BiRefNet">models\BiRefNet</option></select>
+          </div>
+          <div class="setting-group">
+            <label for="aiModelFile">Model</label>
+            <select id="aiModelFile"><option value="">Loading…</option></select>
+          </div>
+          <div class="setting-group">
+            <label class="chk" for="aiKeepCurrentMask"><input id="aiKeepCurrentMask" type="checkbox"/> Keep the current mask</label>
+            <div class="muted" style="font-size:12px;margin-top:.25rem">If enabled, the new AI mask is merged with the current one.</div>
+          </div>
+          <button id="aiApply" class="btn" type="button">Apply</button>
+          <div id="aiStatus" class="muted" style="margin-top:.5rem;font-size:12px"></div>
+        </div>
+      </details>
+
       <details id="globalTools" class="group" open>
         <summary>GLOBAL TOOLS</summary>
         <div>
@@ -92,7 +141,6 @@
           <hr style="border-color:var(--line);margin:1rem 0">
           <div class="setting-group"><label for="dilateRadius">Dilate Radius</label><div class="row"><input id="dilateRadius" type="range" min="1" max="64" value="8"/><input id="dilateVal" type="number" min="1" max="64" value="8"/><button id="applyDilate" class="btn">Apply</button></div></div>
           <div class="setting-group"><label for="erodeRadius">Contract Radius</label><div class="row"><input id="erodeRadius" type="range" min="1" max="64" value="8"/><input id="erodeVal" type="number" min="1" max="64" value="8"/><button id="applyErode" class="btn">Apply</button></div></div>
-          <div class="row" style="margin-top: 1rem;"><button id="aiCutout" class="btn">AI Cutout (rembg)</button></div>
         </div>
       </details>
 

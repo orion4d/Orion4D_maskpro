@@ -1,7 +1,30 @@
 import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
 
-const VER = "0.8-stable";
+const VER = "1.1-node2-dom-preview-aspect-safe";
+const PREVIEW_MIN_HEIGHT = 220;
+const PREVIEW_MAX_HEIGHT = 900;
+
+function isMaskPro(nodeData) {
+  return nodeData?.name === "MaskPro" || nodeData?.display_name === "MaskPro" || nodeData?.displayName === "MaskPro";
+}
+
+function viewUrlFromImageInfo(info) {
+  if (!info) return null;
+  if (typeof info === "string") return info;
+  if (info.src) return info.src;
+  if (info.url) return info.url;
+  if (info.filename) {
+    const params = new URLSearchParams({
+      filename: info.filename,
+      type: info.type || "output",
+      subfolder: info.subfolder || "",
+    });
+    params.set("_maskpro_ts", Date.now().toString());
+    return api.apiURL(`/view?${params.toString()}`);
+  }
+  return null;
+}
 
 function widgetUrlFromValue(v) {
   if (!v) return null;
@@ -14,219 +37,401 @@ function widgetUrlFromValue(v) {
   }
   return null;
 }
-function urlFromNodePreview(n) {
-  if (!n) return null;
-  // 1) widgets classiques
-  const w = n.widgets || [];
-  for (const name of ["mask","image","images"]) {
-    const ww = w.find(_ => _.name === name);
-    if (ww) {
-      const u = widgetUrlFromValue(ww.value);
-      if (u) return u;
-    }
+
+function urlFromNodePreview(node) {
+  if (!node) return null;
+
+  // Load Image and other file widgets, available before a Comfy run.
+  for (const name of ["image", "mask", "images"]) {
+    const w = node.widgets?.find((x) => x.name === name);
+    const u = widgetUrlFromValue(w?.value);
+    if (u) return u;
   }
-  // 2) vignette rendue
-  if (n.imgs?.length) return n.imgs[0].src;
-  return null;
+
+  // Standard frontend previews after execution.
+  if (Array.isArray(node.imgs) && node.imgs.length) {
+    const idx = Number(node.imageIndex || 0);
+    const u = viewUrlFromImageInfo(node.imgs[idx]) || viewUrlFromImageInfo(node.imgs[0]);
+    if (u) return u;
+  }
+
+  // Newer / Node 2 fields seen in different ComfyUI frontend builds.
+  for (const key of ["image", "preview", "previewImage", "thumbnail"]) {
+    const u = viewUrlFromImageInfo(node[key]);
+    if (u) return u;
+  }
+
+  // Executed output payloads sometimes remain attached to outputs.
+  const imgs = node.outputs?.flatMap?.((o) => o?.images || []) || [];
+  return imgs.length ? viewUrlFromImageInfo(imgs[0]) : null;
 }
+
+function upstreamNodeFromInput(node, inputName) {
+  const input = node.inputs?.find((i) => i.name === inputName);
+  const link = input?.link != null ? app.graph?.links?.[input.link] : null;
+  return link ? app.graph?.getNodeById?.(link.origin_id) : null;
+}
+
 function upstreamWithPreview(link) {
   if (!link) return null;
-  const first = app.graph.getNodeById(link.origin_id);
+  const first = app.graph?.getNodeById?.(link.origin_id);
   if (!first) return null;
   if (urlFromNodePreview(first)) return first;
-  const anyIn = first.inputs?.find(Boolean);
-  if (anyIn?.link) return app.graph.getNodeById(app.graph.links[anyIn.link].origin_id) || first;
-  return first;
+  const anyIn = first.inputs?.find((i) => i?.link != null);
+  const nextLink = anyIn ? app.graph?.links?.[anyIn.link] : null;
+  return nextLink ? app.graph?.getNodeById?.(nextLink.origin_id) || first : first;
 }
-async function blob(url) {
+
+async function fetchBlob(url) {
   try {
     const r = await fetch(url, { cache: "no-store" });
     if (!r.ok) return null;
     return await r.blob();
-  } catch { return null; }
+  } catch {
+    return null;
+  }
+}
+
+function loadImage(url) {
+  return new Promise((resolve) => {
+    if (!url) return resolve(null);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+function imageSize(img) {
+  return { w: img?.naturalWidth || img?.width || 0, h: img?.naturalHeight || img?.height || 0 };
 }
 
 app.registerExtension({
-  name: "Orion4D.MaskPro.UI",
+  name: "Orion4D.MaskPro.Node2Preview",
+
   async beforeRegisterNodeDef(nodeType, nodeData) {
-    if (nodeData.name !== "MaskPro") return;
+    if (!isMaskPro(nodeData) || nodeType.__maskProNode2Patched) return;
+    nodeType.__maskProNode2Patched = true;
 
-    const prevDraw = nodeType.prototype.onDrawForeground;
-    nodeType.prototype.onDrawForeground = function (ctx) {
-      prevDraw?.apply(this, arguments);
-      if (this.flags.collapsed) return;
-
-      const M = 12;
-      const W = this.size[0] - M*2;
-      const Y = (this.widgets?.length ? (this.widgets[this.widgets.length-1].last_y || 0) : 0) + 28;
-      const modeW = this.widgets?.find(w => w.name === "preview_mode");
-      const invertW = this.widgets?.find(w => w.name === "invert_mask");
-      const mode = modeW?.value || "image";
-      const inverted = !!(invertW?.value);
-
-      let elem = this.backgroundImageElement;
-      if (mode === "mask" && this.maskImageElement) {
-        if (inverted) {
-          if (!this._maskInvCanvas) this._maskInvCanvas = document.createElement("canvas");
-          const c = this._maskInvCanvas, m = this.maskImageElement;
-          if (c.width !== m.naturalWidth || c.height !== m.naturalHeight) { c.width = m.naturalWidth; c.height = m.naturalHeight; }
-          const x = c.getContext("2d");
-          x.clearRect(0,0,c.width,c.height);
-          x.fillStyle = "#fff"; x.fillRect(0,0,c.width,c.height);
-          x.globalCompositeOperation = "destination-out";
-          x.drawImage(m,0,0);
-          x.globalCompositeOperation = "source-over";
-          elem = c;
-        } else elem = this.maskImageElement;
-      } else if (mode === "rgba" && this.backgroundImageElement && this.maskImageElement) {
-        if (!this._rgbaCanvas) this._rgbaCanvas = document.createElement("canvas");
-        const c = this._rgbaCanvas, base = this.backgroundImageElement, m = this.maskImageElement;
-        if(c.width !== base.naturalWidth || c.height !== base.naturalHeight) { c.width = base.naturalWidth; c.height = base.naturalHeight; }
-        const x = c.getContext("2d");
-        x.clearRect(0,0,c.width,c.height);
-        x.drawImage(base,0,0);
-        x.globalCompositeOperation = inverted ? "destination-in" : "destination-out";
-        x.drawImage(m,0,0);
-        x.globalCompositeOperation = "source-over";
-        elem = c;
-      }
-
-      if (elem?.width > 0) {
-        const H = (elem.height/elem.width)*W;
-        this._extraH = H+40;
-        ctx.drawImage(elem, M, Y, W, H);
-      } else {
-        this._extraH = 160;
-        ctx.fillStyle = "#222"; ctx.fillRect(M,Y,W,120);
-        ctx.fillStyle = "#888"; ctx.textAlign="center"; ctx.textBaseline="middle";
-        ctx.fillText("Prévisualisation…", this.size[0]/2, Y+60);
-      }
+    const original = {
+      onNodeCreated: nodeType.prototype.onNodeCreated,
+      onConnectionsChange: nodeType.prototype.onConnectionsChange,
+      onExecuted: nodeType.prototype.onExecuted,
+      onResize: nodeType.prototype.onResize,
     };
 
-    const onCreated = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function () {
-      onCreated?.apply(this, arguments);
-      const node = this;
-
-      node.backgroundImageElement = null;
-      node.maskImageElement = null;
-      node._rgbaCanvas = null;
-      node._maskInvCanvas = null;
-      node._extraH = 180;
-      
-      const loadImagePreviewFromUpstream = async ()=>{
-        const inImg = node.inputs?.find(i=>i.name==="image");
-        if (!inImg?.link) { node.backgroundImageElement=null; node.setDirtyCanvas(true,true); return; }
-        const src = app.graph.getNodeById(app.graph.links[inImg.link].origin_id);
-        const u = urlFromNodePreview(src);
-        if (!u || (node.backgroundImageElement && u === node.backgroundImageElement.src)) return;
-        const im = new Image(); im.crossOrigin="anonymous";
-        im.onload = ()=>{ node.backgroundImageElement = im; node.setDirtyCanvas(true,true); };
-        im.src = u;
-      };
-      
-      const loadMaskPreviewFromFile = async ()=>{
-        try {
-          const r = await fetch(`/orion4d_maskpro/open?node_id=${node.id}`);
-          if (!r.ok) return;
-          const meta = await r.json();
-          if (!meta.mask_exists) { node.maskImageElement = null; node.setDirtyCanvas(true,true); return; }
-          const u = `/orion4d_maskpro/static/maskpro_${node.id}/mask.png?ts=${Date.now()}`;
-          const im = new Image(); im.crossOrigin="anonymous";
-          im.onload = ()=>{ node.maskImageElement = im; node.setDirtyCanvas(true,true); };
-          im.src = u;
-        } catch {}
-      };
-
-      node.addWidget("combo", "preview_mode", "image", ()=>node.setDirtyCanvas(true,true), { values:["image","mask","rgba"] });
-      const autoRun = node.addWidget("checkbox", "autorun_after_save", false);
-      const inv = node.widgets?.find(w=>w.name==="invert_mask");
-      inv && (inv.callback = ()=>node.setDirtyCanvas(true,true));
-
-      node.addWidget("button", "Edit Mask", null, async ()=>{
-        const inImg = node.inputs?.find(i=>i.name==="image");
-        if (!inImg?.link) { alert("Connecte une image d’entrée."); return; }
-        const srcImg = app.graph.getNodeById(app.graph.links[inImg.link].origin_id);
-        const urlImg = urlFromNodePreview(srcImg);
-        if (!urlImg) { alert("Impossible de récupérer l’image (widget/preview manquant)."); return; }
-        const bImg = await blob(urlImg);
-        if (!bImg) { alert("Échec lecture image."); return; }
-        const fd1 = new FormData();
-        fd1.append("node_id", String(node.id));
-        fd1.append("image", bImg, "image.png");
-        await fetch("/orion4d_maskpro/save", { method:"POST", body: fd1 });
-        const inMask = node.inputs?.find(i=>i.name==="mask");
-        if (inMask?.link) {
-          const up = upstreamWithPreview(app.graph.links[inMask.link]);
-          const urlMask = urlFromNodePreview(up);
-          if (urlMask) {
-            const bMask = await blob(urlMask);
-            if (bMask) {
-              const fd2 = new FormData();
-              fd2.append("node_id", String(node.id));
-              fd2.append("mask", bMask, "mask.png");
-              await fetch("/orion4d_maskpro/save", { method:"POST", body: fd2 });
-            }
-          }
-        }
-        window.open(`/orion4d_maskpro/editor?node_id=${node.id}`, "_blank", "width=1200,height=800");
-      });
-
-      node.addWidget("button", "Clear Mask", null, async ()=>{
-        await fetch(`/orion4d_maskpro/clear?node_id=${node.id}`);
-        node.maskImageElement = null;
-        node.setDirtyCanvas(true,true);
-      });
-
-      nodeType.prototype.onGetExtraSpace = function() {
-        if (this.flags.collapsed) return 0;
-        return this._extraH || 180;
-      };
-
-      const onConn = node.onConnectionsChange;
-      node.onConnectionsChange = function() {
-        onConn?.apply(this, arguments);
-        setTimeout(loadImagePreviewFromUpstream, 50);
-      };
-      
-      setTimeout(loadImagePreviewFromUpstream, 80);
-      setTimeout(loadMaskPreviewFromFile, 160);
-
-      window.addEventListener("message", async (ev)=>{
-        if (ev.origin !== location.origin || ev.data?.type !== "maskpro:saved" || String(ev.data.nodeId) !== String(node.id)) return;
-        setTimeout(loadMaskPreviewFromFile, 80);
-        if (autoRun?.value && app?.queuePrompt) setTimeout(()=>app.queuePrompt(), 100);
-      });
+      original.onNodeCreated?.apply(this, arguments);
+      requestAnimationFrame(() => setupMaskPro(this, original));
     };
 
-    const onExecuted = nodeType.prototype.onExecuted;
-    nodeType.prototype.onExecuted = function(message) {
-      onExecuted?.apply(this, arguments);
-
-      // We expect the backend to send previews for [mask, image, rgba].
-      // We only want to update our background image from the 'image' output.
-      if (message?.images && message.images.length > 1) {
-        
-        // The second preview (index 1) is the 'image' output.
-        const imagePreviewInfo = message.images[1];
-        
-        const imageUrl = api.apiURL(`/view?filename=${encodeURIComponent(imagePreviewInfo.filename)}&type=${imagePreviewInfo.type}&subfolder=${encodeURIComponent(imagePreviewInfo.subfolder)}`);
-        
-        // Avoid reloading if the image is the same
-        if (!this.backgroundImageElement || this.backgroundImageElement.src !== imageUrl) {
-          const newBgImage = new Image();
-          newBgImage.crossOrigin = "anonymous";
-          newBgImage.onload = () => {
-            this.backgroundImageElement = newBgImage;
-            this.setDirtyCanvas(true, true);
-          };
-          newBgImage.src = imageUrl;
-        }
-
-        // IMPORTANT: Prevent the default ComfyUI previewer from drawing all 3 images.
-        // We clear the array so it has nothing to draw.
-        message.images.length = 0;
+    nodeType.prototype.onConnectionsChange = function () {
+      const ret = original.onConnectionsChange?.apply(this, arguments);
+      if (this.__maskProMethods) {
+        setTimeout(() => this.__maskProMethods.refreshAll(true), 80);
       }
+      return ret;
+    };
+
+    nodeType.prototype.onExecuted = function (message) {
+      original.onExecuted?.apply(this, arguments);
+      if (this.__maskProMethods) {
+        this.__maskProMethods.applyExecutedImages(message);
+        setTimeout(() => this.__maskProMethods.refreshAll(true), 120);
+      }
+      // Avoid the default preview stack showing mask/image/rgba all at once.
+      if (message?.images?.length) message.images.length = 0;
+    };
+
+    nodeType.prototype.onResize = function (size) {
+      const ret = original.onResize?.apply(this, arguments);
+      this.__maskProMethods?.refreshLayout?.();
+      return ret;
     };
   },
 });
+
+function setupMaskPro(node) {
+  if (node.__maskProReady) return;
+  node.__maskProReady = true;
+  node.resizable = true;
+
+  const markDirty = () => node.setDirtyCanvas?.(true, true);
+  const findWidget = (name) => node.widgets?.find((w) => w.name === name || w.__maskProKey === name);
+
+  node.__maskPro = {
+    image: null,
+    imageUrl: null,
+    mask: null,
+    maskUrl: null,
+    rgbaCanvas: document.createElement("canvas"),
+    invMaskCanvas: document.createElement("canvas"),
+  };
+
+  function ensureWidgets() {
+    if (!findWidget("preview_mode")) {
+      const w = node.addWidget("combo", "preview_mode", "image", () => { drawPreview(); markDirty(); }, { values: ["image", "mask", "rgba"] });
+      w.__maskProKey = "preview_mode";
+      w.serialize = true;
+    }
+    if (!findWidget("autorun_after_save")) {
+      const w = node.addWidget("checkbox", "autorun_after_save", false);
+      w.__maskProKey = "autorun_after_save";
+      w.serialize = true;
+    }
+
+    const inv = findWidget("invert_mask");
+    if (inv) inv.callback = () => { drawPreview(); markDirty(); };
+
+    if (!findWidget("maskpro_edit")) {
+      const w = node.addWidget("button", "Edit Mask", null, editMask);
+      w.__maskProKey = "maskpro_edit";
+      w.serialize = false;
+    }
+    if (!findWidget("maskpro_clear")) {
+      const w = node.addWidget("button", "Clear Mask", null, clearMask);
+      w.__maskProKey = "maskpro_clear";
+      w.serialize = false;
+    }
+  }
+
+  const previewCanvas = document.createElement("canvas");
+  previewCanvas.style.cssText = "display:block;background:#181b20;border-radius:6px;max-width:100%;touch-action:none;";
+
+  const previewWrapper = document.createElement("div");
+  previewWrapper.style.cssText = `width:100%;height:${PREVIEW_MIN_HEIGHT}px;overflow:hidden;box-sizing:border-box;margin-top:8px;padding:0;contain:layout paint size;display:flex;align-items:flex-start;justify-content:center;`;
+  previewWrapper.appendChild(previewCanvas);
+
+  let previewWidget = findWidget("maskpro_preview");
+  if (!previewWidget && typeof node.addDOMWidget === "function") {
+    previewWidget = node.addDOMWidget("maskpro_preview", "preview", previewWrapper, {
+      serialize: false,
+      hideOnZoom: false,
+    });
+    previewWidget.__maskProKey = "maskpro_preview";
+    previewWidget.serialize = false;
+  }
+
+  function refreshLayout() {
+    if (!previewWidget) return;
+    const nodeW = Math.max(300, Math.floor(node.size?.[0] || 420));
+    const w = Math.max(260, nodeW - 24);
+    const h = Math.max(PREVIEW_MIN_HEIGHT, Math.min(PREVIEW_MAX_HEIGHT, Math.floor(w * 0.72)));
+    previewWrapper.style.width = `${w}px`;
+    previewWrapper.style.height = `${h}px`;
+    previewCanvas.style.width = `${w}px`;
+    previewCanvas.style.height = `${h}px`;
+    previewWidget.computeSize = () => [w, h + 16];
+    drawPreview();
+    markDirty();
+  }
+
+  async function refreshImage(force = false) {
+    const srcNode = upstreamNodeFromInput(node, "image");
+    let url = urlFromNodePreview(srcNode);
+
+    // Cache fallback after Edit Mask or after backend has written image.png.
+    if (!url || force) {
+      try {
+        const r = await fetch(`/orion4d_maskpro/open?node_id=${node.id}&ts=${Date.now()}`, { cache: "no-store" });
+        const meta = r.ok ? await r.json() : null;
+        if (meta?.image_exists && (!url || force)) {
+          url = `/orion4d_maskpro/static/maskpro_${node.id}/image.png?ts=${Date.now()}`;
+        }
+      } catch {}
+    }
+
+    if (!url) {
+      node.__maskPro.image = null;
+      node.__maskPro.imageUrl = null;
+      drawPreview();
+      markDirty();
+      return;
+    }
+    if (!force && node.__maskPro.imageUrl === url && node.__maskPro.image) return;
+    const img = await loadImage(url);
+    node.__maskPro.image = img;
+    node.__maskPro.imageUrl = img ? url : null;
+    drawPreview();
+    markDirty();
+  }
+
+  async function refreshMask(force = false) {
+    let url = null;
+    try {
+      const r = await fetch(`/orion4d_maskpro/open?node_id=${node.id}&ts=${Date.now()}`, { cache: "no-store" });
+      const meta = r.ok ? await r.json() : null;
+      if (meta?.mask_exists) url = `/orion4d_maskpro/static/maskpro_${node.id}/mask.png?ts=${Date.now()}`;
+    } catch {}
+
+    // Optional input-mask preview fallback if no edited cache exists.
+    if (!url) {
+      const inMask = node.inputs?.find((i) => i.name === "mask");
+      const link = inMask?.link != null ? app.graph?.links?.[inMask.link] : null;
+      const up = upstreamWithPreview(link);
+      url = urlFromNodePreview(up);
+    }
+
+    if (!url) {
+      node.__maskPro.mask = null;
+      node.__maskPro.maskUrl = null;
+      drawPreview();
+      markDirty();
+      return;
+    }
+    if (!force && node.__maskPro.maskUrl === url && node.__maskPro.mask) return;
+    const img = await loadImage(url);
+    node.__maskPro.mask = img;
+    node.__maskPro.maskUrl = img ? url : null;
+    drawPreview();
+    markDirty();
+  }
+
+  async function refreshAll(force = false) {
+    await refreshImage(force);
+    await refreshMask(force);
+    refreshLayout();
+  }
+
+  function getDisplayElement() {
+    const mode = findWidget("preview_mode")?.value || "image";
+    const inverted = Boolean(findWidget("invert_mask")?.value);
+    const img = node.__maskPro.image;
+    const mask = node.__maskPro.mask;
+
+    if (mode === "mask") {
+      if (!mask) return null;
+      if (!inverted) return mask;
+      const c = node.__maskPro.invMaskCanvas;
+      const m = imageSize(mask);
+      if (c.width !== m.w || c.height !== m.h) { c.width = m.w; c.height = m.h; }
+      const ctx = c.getContext("2d");
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.globalCompositeOperation = "difference";
+      ctx.drawImage(mask, 0, 0, c.width, c.height);
+      ctx.globalCompositeOperation = "source-over";
+      return c;
+    }
+
+    if (mode === "rgba" && img && mask) {
+      const s = imageSize(img);
+      const c = node.__maskPro.rgbaCanvas;
+      if (c.width !== s.w || c.height !== s.h) { c.width = s.w; c.height = s.h; }
+      const ctx = c.getContext("2d");
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      ctx.globalCompositeOperation = inverted ? "destination-in" : "destination-out";
+      ctx.drawImage(mask, 0, 0, c.width, c.height);
+      ctx.globalCompositeOperation = "source-over";
+      return c;
+    }
+
+    return img;
+  }
+
+  function drawPreview() {
+    if (!previewCanvas.isConnected && !previewWidget) return;
+    const rect = previewCanvas.getBoundingClientRect();
+    const cssW = Math.max(1, Math.round(rect.width || parseFloat(previewCanvas.style.width) || (node.size?.[0] || 360) - 24));
+    const cssH = Math.max(1, Math.round(rect.height || parseFloat(previewCanvas.style.height) || PREVIEW_MIN_HEIGHT));
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    if (previewCanvas.width !== Math.round(cssW * dpr) || previewCanvas.height !== Math.round(cssH * dpr)) {
+      previewCanvas.width = Math.round(cssW * dpr);
+      previewCanvas.height = Math.round(cssH * dpr);
+    }
+    const ctx = previewCanvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+    ctx.fillStyle = "#181b20";
+    ctx.fillRect(0, 0, cssW, cssH);
+
+    const elem = getDisplayElement();
+    const s = imageSize(elem);
+    if (!s.w || !s.h) {
+      ctx.fillStyle = "#8b949e";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "13px system-ui, sans-serif";
+      ctx.fillText("Prévisualisation indisponible", cssW / 2, cssH / 2);
+      return;
+    }
+
+    const pad = 8;
+    const scale = Math.max(0.001, Math.min(Math.max(1, cssW - pad * 2) / s.w, Math.max(1, cssH - pad * 2) / s.h));
+    const dw = Math.max(1, Math.round(s.w * scale));
+    const dh = Math.max(1, Math.round(s.h * scale));
+    const dx = (cssW - dw) / 2;
+    const dy = 8; // top aligned, horizontally centered
+
+    ctx.fillStyle = "#0f1115";
+    ctx.fillRect(dx, dy, dw, dh);
+    ctx.drawImage(elem, dx, dy, dw, dh);
+  }
+
+  async function editMask() {
+    const inImg = node.inputs?.find((i) => i.name === "image");
+    if (!inImg?.link) { alert("Connecte une image d’entrée."); return; }
+
+    const srcImg = upstreamNodeFromInput(node, "image");
+    const urlImg = urlFromNodePreview(srcImg);
+    if (!urlImg) { alert("Impossible de récupérer l’image source. Lance le workflow une fois ou utilise Load Image."); return; }
+    const bImg = await fetchBlob(urlImg);
+    if (!bImg) { alert("Échec lecture image."); return; }
+
+    const fd1 = new FormData();
+    fd1.append("node_id", String(node.id));
+    fd1.append("image", bImg, "image.png");
+    await fetch("/orion4d_maskpro/save", { method: "POST", body: fd1 });
+
+    const inMask = node.inputs?.find((i) => i.name === "mask");
+    if (inMask?.link) {
+      const up = upstreamWithPreview(app.graph?.links?.[inMask.link]);
+      const urlMask = urlFromNodePreview(up);
+      const bMask = urlMask ? await fetchBlob(urlMask) : null;
+      if (bMask) {
+        const fd2 = new FormData();
+        fd2.append("node_id", String(node.id));
+        fd2.append("mask", bMask, "mask.png");
+        await fetch("/orion4d_maskpro/save", { method: "POST", body: fd2 });
+      }
+    }
+
+    await refreshAll(true);
+    window.open(`/orion4d_maskpro/editor?node_id=${node.id}`, "_blank", "width=1400,height=900");
+  }
+
+  async function clearMask() {
+    await fetch(`/orion4d_maskpro/clear?node_id=${node.id}&ts=${Date.now()}`);
+    node.__maskPro.mask = null;
+    node.__maskPro.maskUrl = null;
+    drawPreview();
+    markDirty();
+  }
+
+  function applyExecutedImages(message) {
+    // Backend returns three previews in order: mask, image, image_rgba.
+    const imgs = message?.images || message?.ui?.images || [];
+    if (!Array.isArray(imgs) || !imgs.length) return;
+    const imageUrl = viewUrlFromImageInfo(imgs[1] || imgs[0]);
+    const maskUrl = viewUrlFromImageInfo(imgs[0]);
+    if (imageUrl) loadImage(imageUrl).then((im) => { if (im) { node.__maskPro.image = im; node.__maskPro.imageUrl = imageUrl; drawPreview(); markDirty(); } });
+    if (maskUrl) loadImage(maskUrl).then((im) => { if (im) { node.__maskPro.mask = im; node.__maskPro.maskUrl = maskUrl; drawPreview(); markDirty(); } });
+  }
+
+  ensureWidgets();
+  refreshLayout();
+  setTimeout(() => refreshAll(true), 100);
+  setTimeout(() => refreshAll(false), 700);
+
+  node.__maskProMethods = { refreshAll, refreshLayout, drawPreview, applyExecutedImages };
+
+  window.addEventListener("message", (ev) => {
+    if (ev.origin !== location.origin || ev.data?.type !== "maskpro:saved" || String(ev.data.nodeId) !== String(node.id)) return;
+    setTimeout(() => refreshAll(true), 120);
+    const autoRun = findWidget("autorun_after_save");
+    if (autoRun?.value && app?.queuePrompt) setTimeout(() => app.queuePrompt(), 160);
+  });
+}
