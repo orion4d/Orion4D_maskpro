@@ -54,8 +54,8 @@ git clone [https://github.com/orion4d/Orion4D_maskpro.git](https://github.com/or
 
 **Dépendances :**
 - Pour BiRefNet : Assurez-vous d'avoir les modèles dans `models/BiRefNet`. (dossier par défaut, vous pouvez modifier l'emplacement dans models)
-Licence BiRefNet : https://raw.githubusercontent.com/fal-ai/realtime-birefnet/refs/heads/main/LICENCE.txt
-https://huggingface.co/1038lab/BiRefNet/tree/main
+- Licence BiRefNet : https://raw.githubusercontent.com/fal-ai/realtime-birefnet/refs/heads/main/LICENCE.txt
+- Téléchargement (safetensors) : https://huggingface.co/1038lab/BiRefNet/tree/main
 ---
 
 ## 🔌 Entrées / Sorties
