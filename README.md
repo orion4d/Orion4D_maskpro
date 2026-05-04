@@ -1,46 +1,49 @@
+🇬🇧 English version (default)  
+🇫🇷 [Lire la version française](README_FR.md)
+
 # Orion4D MaskPro
-***Éditeur de masques avancé pour ComfyUI, édition non destructive avec outils de sélection professionnels, pinceaux personnalisés PNG, aperçu embarqué et éditeur plein écran.***
+***Advanced mask editor for ComfyUI, non-destructive editing with professional selection tools, custom PNG brushes, embedded preview, and fullscreen editor.***
 
 <img width="1541" height="903" alt="image" src="https://github.com/user-attachments/assets/620e654b-7823-4321-8df1-424bf40fbe24" />
 
 ---
 
-## ✨ Aperçu
+## ✨ Overview
 
-`Orion4D_maskpro` apporte un éditeur de masques complet à ComfyUI avec :
+`Orion4D_maskpro` brings a comprehensive mask editor to ComfyUI with:
 
 <img width="2546" height="1283" alt="image" src="https://github.com/user-attachments/assets/248722b5-03f6-4557-96a9-182a8fa10c0d" />
 <img width="1824" height="1020" alt="image" src="https://github.com/user-attachments/assets/234794d6-5cc9-4cb6-ba28-285e267ab615" />
 
-- **Outils professionnels** : pinceau, lasso, polygone, rectangle, ellipse, dégradé, baguette magique.
-- **Pinceaux jusqu'à 2048 px** : support PNG transparent, rotation et lissage de trajectoire.
-- **Historique complet** : Undo/Redo illimité ($Ctrl+Z$ / $Ctrl+Y$).
-- **Navigation fluide** : zoom centré sur curseur, outil main ($pan$).
-- **Traitements globaux** : flou de contour, dilatation/érosion, seuillage, détourage IA.
-- **Intégration native** : prévisualisation temps réel dans le node (modes Image / Mask / RGBA) et éditeur dédié.
+- **Professional tools**: brush, lasso, polygon, rectangle, ellipse, gradient, magic wand.
+- **Brushes up to 2048 px**: transparent PNG support, rotation, and path smoothing.
+- **Full history**: Unlimited Undo/Redo (**Ctrl+Z** / **Ctrl+Y**).
+- **Smooth navigation**: cursor-centered zoom, hand tool (pan).
+- **Global processing**: edge blur, dilation/erosion, thresholding, AI cutout.
+- **Native integration**: real-time preview in the node (Image / Mask / RGBA modes) and dedicated editor.
 
 ---
 
-## 🚀 Fonctionnalités
+## 🚀 Features
 
-### Édition interactive
-- **Nouveau :** Prévisualisation dynamique dans le node avec support du ratio d'aspect.
-- Inversion du masque à la volée.
-- Sélections animées (fourmis marchantes).
-- Option **Auto-run** : lance automatiquement le workflow après "Save & Close".
+### Interactive Editing
+- **New:** Dynamic preview in the node with aspect ratio support.
+- On-the-fly mask inversion.
+- Animated selections (marching ants).
+- **Auto-run** option: automatically launches the workflow after "Save & Close".
 
-### Outils de sélection avancés
-- **Pinceau** : formes personnalisées, dureté, espacement, rotation et **lissage (smoothing)**.
-- **Lasso** : libre ou polygonal.
-- **Formes géométriques** : rectangle (avec rayons d'arrondis), ellipse avec contraintes ($Ctrl$ pour cercle/carré parfait).
-- **Dégradés** : linéaire ou radial avec contrôle d'opacité.
-- **Baguette magique** : tolérance, moyenne de voisinage ($Average$) et lissage des bords.
+### Advanced Selection Tools
+- **Brush**: custom shapes, hardness, spacing, rotation, and **smoothing**.
+- **Lasso**: freehand or polygonal.
+- **Geometric shapes**: rectangle (with rounded corners), ellipse with constraints (**Ctrl** for perfect circle/square).
+- **Gradients**: linear or radial with opacity control.
+- **Magic wand**: tolerance, neighborhood average (Average), and edge smoothing.
 
-### Traitements intelligents (AI)
-- **BiRefNet Integration** : Support intégré pour le détourage via les modèles BiRefNet.
-- **AI Cutout** : Détection automatique du sujet. Option pour fusionner le résultat avec le masque existant.
-- **Rembg Support** : Support classique via `rembg`.
-- **Morphologie** : dilatation, érosion, lissage global.
+### Smart Processing (AI)
+- **BiRefNet Integration**: Built-in support for cutout via BiRefNet models.
+- **AI Cutout**: Automatic subject detection. Option to merge the result with the existing mask.
+- **Rembg Support**: Classic support via `rembg`.
+- **Morphology**: dilation, erosion, global smoothing.
 
 ---
 
@@ -49,79 +52,80 @@
 ```bash
 cd ComfyUI/custom_nodes
 git clone [https://github.com/orion4d/Orion4D_maskpro.git](https://github.com/orion4d/Orion4D_maskpro.git)
-# Redémarrer ComfyUI
+# Restart ComfyUI
 ```
 
-**Dépendances :**
-- Pour BiRefNet : Assurez-vous d'avoir les modèles dans `models/BiRefNet`. (dossier par défaut, vous pouvez modifier l'emplacement dans models)
-- Licence BiRefNet : https://raw.githubusercontent.com/fal-ai/realtime-birefnet/refs/heads/main/LICENCE.txt
-- Téléchargement (safetensors) : https://huggingface.co/1038lab/BiRefNet/tree/main
----
-
-## 🔌 Entrées / Sorties
-
-### Entrées
-- `image` — IMAGE (optionnel) : image de référence.
-- `mask` — MASK (optionnel) : masque initial à éditer.
-- `invert_mask` — BOOLEAN : inversion du masque de sortie.
-
-### Sorties
-- `mask` — MASK : (0..1, **blanc = zone conservée**).
-- `image` — IMAGE : Passthrough de l'image originale.
-- `image_rgba` — IMAGE : Image avec le masque appliqué en canal alpha.
+**Dependencies:**
+- For BiRefNet: Ensure you have the models in `models/BiRefNet`. (default folder, you can change the location in models)
+- BiRefNet License: https://raw.githubusercontent.com/fal-ai/realtime-birefnet/refs/heads/main/LICENCE.txt
+- Download (safetensors): https://huggingface.co/1038lab/BiRefNet/tree/main
 
 ---
 
-## ⌨️ Raccourcis clavier
+## 🔌 Inputs / Outputs
 
-### Navigation & Sélection
-| Touche | Action |
+### Inputs
+- `image` — IMAGE (optional): reference image.
+- `mask` — MASK (optional): initial mask to edit.
+- `invert_mask` — BOOLEAN: output mask inversion.
+
+### Outputs
+- `mask` — MASK: (0..1, **white = kept area**).
+- `image` — IMAGE: Passthrough of the original image.
+- `image_rgba` — IMAGE: Image with the mask applied in the alpha channel.
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+### Navigation & Selection
+| Key | Action |
 |--------|--------|
-| **Molette** | Zoom centré sur le curseur |
-| **Z** | Outil Zoom (Alt = dézoom) |
-| **H** (maintenir) | Outil Main temporaire (pan) |
+| **Mouse Wheel** | Zoom centered on cursor |
+| **Z** | Zoom Tool (Alt = zoom out) |
+| **H** (hold) | Temporary Hand Tool (pan) |
 | **Space** | Pan |
-| **Q** (maintenir) | Déplacer la sélection active au curseur |
-| **Esc** | Effacer la sélection / Annuler polygone |
+| **Q** (hold) | Move active selection to cursor |
+| **Esc** | Clear selection / Cancel polygon |
 
-### Outils
-| Touche | Action |
+### Tools
+| Key | Action |
 |--------|--------|
-| **B** | Pinceau (Brush) |
-| **L** | Lasso libre |
-| **K** | Lasso polygonal |
-| **W** | Baguette magique (Wand) |
-| **G** | Dégradé (Gradient) |
-| **X** | Basculer mode Effacement (Erase) |
-| **A** | Remplir la sélection (Fill) |
-| **I** | Inverser le masque (Invert) |
+| **B** | Brush |
+| **L** | Freehand Lasso |
+| **K** | Polygonal Lasso |
+| **W** | Magic Wand |
+| **G** | Gradient |
+| **X** | Toggle Erase mode |
+| **A** | Fill selection |
+| **I** | Invert mask |
 
 ---
 
-## 🎨 Bibliothèque de pinceaux
+## 🎨 Brush Library
 
-L'éditeur inclut désormais une **Grille de Pinceaux (Brush Grid)** :
-1. Cliquez sur **Open brush grid** dans les réglages du pinceau.
-2. Visualisez et sélectionnez vos brosses PNG instantanément.
-3. Ajoutez vos propres fichiers dans `web/brushes/`.
+The editor now includes a **Brush Grid**:
+1. Click on **Open brush grid** in the brush settings.
+2. View and select your PNG brushes instantly.
+3. Add your own files in `web/brushes/`.
 
 ---
 
-## 🔧 Structure technique
+## 🔧 Technical Structure
 
-Le node utilise un système de cache local pour garantir la persistance :
+The node uses a local cache system to ensure persistence:
 - `ComfyUI/user/orion4d_cache/maskpro_<NODE_ID>/`
-- `image.png` : Référence de travail.
-- `mask.png` : Masque haute précision (L 8-bit).
+- `image.png`: Working reference.
+- `mask.png`: High-precision mask (L 8-bit).
 
 ---
 
 <div align="center">
 
-### 🌟 **Soutenez le projet**
-Si cet outil vous est utile, n'hésitez pas à laisser une ⭐ sur GitHub !
+### 🌟 **Support the project**
+If you find this tool useful, feel free to leave a ⭐ on GitHub!
 
-**Développé avec ❤️ pour la communauté ComfyUI par Orion4D**
+**Developed with ❤️ for the ComfyUI community by Orion4D**
 
 <a href="https://ko-fi.com/orion4d">
 <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Buy Me A Coffee" height="41" width="174">
